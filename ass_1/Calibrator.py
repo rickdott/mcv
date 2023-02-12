@@ -1,6 +1,7 @@
 import numpy as np
 import cv2 as cv
 import glob
+import json
 from operator import itemgetter
 
 class Calibrator:
@@ -8,10 +9,12 @@ class Calibrator:
     CELL_SIZE = 24#mm
     BOARD_SIZE = (6, 9)
 
+    CALIBRATION_PATH = 'resources/calibration.npz'
+
     CRITERIA = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-    objp = np.zeros((9*6, 3), np.float32)
-    objp[:, :2] = np.mgrid[0:6, 0:9].T.reshape(-1, 2)
+    objp = np.zeros((BOARD_SIZE[1]*BOARD_SIZE[0], 3), np.float32)
+    objp[:, :2] = np.mgrid[0:BOARD_SIZE[0], 0:BOARD_SIZE[1]].T.reshape(-1, 2)
 
     objpoints = []
     imgpoints = []
@@ -28,7 +31,7 @@ class Calibrator:
 
         return list(zip(x, y))
 
-    def click_event(self, event, x, y, flags, params):
+    def click_event(self, event, x, y):
         if event == cv.EVENT_LBUTTONDOWN:
             print(f'Clicked at coordinate ({x},{y})')
             self.click_coords.append((x, y))
@@ -63,24 +66,25 @@ class Calibrator:
                     self.manual_corners.extend(self.interpolate(left, right, self.BOARD_SIZE[1]))
                 self.manual_corners = np.array(self.manual_corners, dtype=float)
                 self.manual_corners = np.expand_dims(self.manual_corners, 1)
+
+                # Add objp and manually found corners to designated lists
                 self.objpoints.append(self.objp)
                 self.imgpoints.append(self.manual_corners)
                 
-
-    def calibrate(self):
+    def process_images(self):
         for fname in self.images:
             img = cv.imread(fname)
-            gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+            self.gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
-            ret, corners = cv.findChessboardCorners(gray, self.BOARD_SIZE, None)
+            ret, corners = cv.findChessboardCorners(self.gray, self.BOARD_SIZE, None)
 
             if ret:
                 self.objpoints.append(self.objp)
-                corners_subpix = cv.cornerSubPix(gray, corners, (11, 11), (-1, -1), self.CRITERIA)
+                corners_subpix = cv.cornerSubPix(self.gray, corners, (11, 11), (-1, -1), self.CRITERIA)
                 self.imgpoints.append(corners_subpix)
                 cv.drawChessboardCorners(img, self.BOARD_SIZE, corners_subpix, ret)
                 cv.imshow('img', img)
-                cv.waitKey(500)
+                cv.waitKey(5)
             else:
                 print(f'Did not find corners for file: {fname}')
                 # Manually request corners
@@ -93,5 +97,18 @@ class Calibrator:
                 cv.imshow('img', img)
                 cv.waitKey(500)
 
-
         cv.destroyAllWindows()
+    
+    def calibrate(self, recalibrate=False, save=True):
+        if not recalibrate:
+            with np.load(self.CALIBRATION_PATH) as calibration:
+                self.ret = calibration['ret']
+                self.mtx = calibration['mtx']
+                self.dist = calibration['dist']
+                self.rvecs = calibration['rvecs']
+                self.tvecs = calibration['tvecs']
+            if save:
+                np.savez(self.CALIBRATION_PATH, ret=self.ret, mtx=self.mtx, dist=self.dist, rvecs=self.rvecs, tvecs=self.tvecs)
+        else:
+            self.process_images()
+            self.ret, self.mtx, self.dist, self.rvecs, self.tvecs = cv.calibrateCamera(self.objpoints, self.imgpoints, self.gray.shape[::-1], None, None)

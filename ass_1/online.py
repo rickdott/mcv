@@ -1,14 +1,17 @@
 from Calibrator import Calibrator
-import cv2 as cv
 from LiveCamera import LiveCamera
+
 # All files
 # calibrator = Calibrator('resources/img*.png')
 # Without manual files
 calibrator = Calibrator('resources/img_*[!X].png')
-calibrator.calibrate(recalibrate=False)
+# calibrator = Calibrator('resources/img_20_X.png')
+calibrator.calibrate(recalibrate=False, save=False)
 
 live = LiveCamera(calibrator)
 live.start()
+
+
 
 
 

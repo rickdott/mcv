@@ -19,7 +19,7 @@ while True:
         break
     elif k%256 == 32:
         # Spacebar
-        fname = f'img_{images + 27}.png'
+        fname = f'img_{images}.png'
         cv2.imwrite(fname, frame)
         print(f'{images + 1} saved.')
         images += 1

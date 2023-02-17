@@ -1,17 +1,26 @@
 import numpy as np
 import cv2 as cv
 
-arr = np.random.rand(56,2)
-print(arr)
-print(arr.shape)
+arr1 = np.array([0,0,0])
+arr2 = np.array([0,0,3])
+arr3 = np.array([0,0,-3])
+arr4 = np.array([3, -3, 0])
+arr5 = np.array([3, 3, 0])
+arr6 = np.array([3, 3, -3])
 
-arr2 = np.expand_dims(arr, 1)
-print(arr2)
-print(arr2.shape)
+for elem in [arr2, arr3, arr4, arr5, arr6]:
+    print(arr1 - elem)
+# arr = np.random.rand(56,2)
+# print(arr)
+# print(arr.shape)
 
-for item in arr2:
-    print(item[0][0])
-    print(item[0][1])
+# arr2 = np.expand_dims(arr, 1)
+# print(arr2)
+# print(arr2.shape)
+
+# for item in arr2:
+#     print(item[0][0])
+#     print(item[0][1])
 # img = cv.imread('resources\img_20_X.png')
 
 # # xy = np.mgrid[155:284:6j, 245:344:9j].reshape(2, -1).T

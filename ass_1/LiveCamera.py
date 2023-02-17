@@ -1,5 +1,6 @@
 import cv2 as cv
 import numpy as np
+from datetime import datetime
 
 # Camera class that uses the webcam, used in the online phase of the assignment
 class LiveCamera():
@@ -7,9 +8,12 @@ class LiveCamera():
     def __init__(self, calibrator):
         # Constructor of LiveCamera class, incorporate existing calibrator
         self.calibrator = calibrator
-        cube_size = self.calibrator.CELL_SIZE * 3
-        self.cube_points = np.float32([[0,0,0], [0,cube_size,0], [cube_size,cube_size,0], [cube_size,0,0],
-                   [0,0,-cube_size],[0,cube_size,-cube_size],[cube_size,cube_size,-cube_size],[cube_size,0,-cube_size] ])
+        self.cube_size = self.calibrator.CELL_SIZE * 3
+
+        # 8 points that make up the cube shape in coordinate (XYZ) space
+        self.cube_points = np.float32([[0,0,0], [0,self.cube_size,0], [self.cube_size,self.cube_size,0], [self.cube_size,0,0],
+                   [0,0,-self.cube_size], [0,self.cube_size,-self.cube_size], [self.cube_size,self.cube_size,-self.cube_size], [self.cube_size,0,-self.cube_size]])
+
 
     def start(self):
         # Start live webcam session, attempts to find chessboard corners,
@@ -22,38 +26,26 @@ class LiveCamera():
             if not ret:
                 print("Failed")
                 break
+
             # Convert to grayscale and attempt to find chessboardcorners 
-            # use cv.CALIB_CB_FAST_CHECK since many webcam frames do not include checkersboard
+            # use cv.CALIB_CB_FAST_CHECK since many webcam frames do not include chessboard
             gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
             ret, corners = cv.findChessboardCorners(gray, self.calibrator.BOARD_SIZE, None, flags=cv.CALIB_CB_FAST_CHECK)
             if ret:
                 # Find better corner locations (more exact than integer pixels)
-                corners_subpix = cv.cornerSubPix(gray, corners, (11, 11), (-1, -1), self.calibrator.CRITERIA)
+                corners_subpix = cv.cornerSubPix(gray, corners, (5, 5), (-1, -1), self.calibrator.CRITERIA)
                 
                 # Using subpixel corners and intrinsic camera matrix, find rotation and translation vectors for the current frame
                 _, rvec, tvec = cv.solvePnP(self.calibrator.objp, corners_subpix, self.calibrator.mtx, self.calibrator.dist)
 
                 # Draw frame axes (x, y, z) directions on frame
-                frame = cv.drawFrameAxes(frame, self.calibrator.mtx, self.calibrator.dist, rvec, tvec, self.calibrator.CELL_SIZE * (self.calibrator.BOARD_SIZE[1] - 1))
+                cv.drawFrameAxes(frame, self.calibrator.mtx, self.calibrator.dist, rvec, tvec, self.calibrator.CELL_SIZE * (self.calibrator.BOARD_SIZE[1] - 1))
 
-                # Draw cube
-                # cube_points = np.array([1, 1, 1], dtype=np.float32)
-
+                # Find points in 2d image where cube_points should be given camera matrix and rvec/tvec
                 projected_cube = cv.projectPoints(self.cube_points, rvec, tvec, self.calibrator.mtx, self.calibrator.dist)
 
-                amt_points = len(projected_cube[0])
-                for point in range(amt_points):
-                    if point < amt_points - 1:
-                        cv.line(frame,(int(projected_cube[0][point][0][0]), int(projected_cube[0][point][0][1])), (int(projected_cube[0][point + 1][0][0]), int(projected_cube[0][point + 1][0][1])), (0, 255, 0), 2)
+                self.draw_cube(projected_cube, frame)
 
-                # point_iterator = iter(projected_cube[0])
-                
-                # for point in point_iterator:
-                #     next_point = next(point_iterator)
-                #     cv.line(frame, (int(point[0][0]), int(point[0][1])), (int(next_point[0][0]), int(next_point[0][1])), (0, 255, 0), 2)
-                for point in projected_cube[0]:
-                    cv.circle(frame, (int(point[0][0]), int(point[0][1])), 2, (0, 255, 0), thickness=cv.FILLED)\
-                
             # Show frame, even if checkersboard is not found
             cv.imshow("Live", frame)
 
@@ -62,7 +54,33 @@ class LiveCamera():
                 # Escape pressed
                 print("Quitting...")
                 break
+            elif k%256 == 32:
+                # Spacebar
+                print("Saving image...")
+                now = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
+                fname = f'examples/img_{now}.png'
+                cv.imwrite(fname, frame)
         
         # Clean up
         cv.destroyAllWindows()
         cam.release()
+
+    def draw_cube(self, projected_cube, frame):
+        # From any corner, there should be a line to any other corner where only one coordinate changes
+        amt_points = len(projected_cube[0])
+        drawn_lines = []
+
+        for point_i in range(amt_points):
+            for point_j in range(amt_points):
+                if point_i == point_j: continue
+
+                # If sum of absolute differences between cube points is equal to cube_size
+                if np.sum(np.abs(self.cube_points[point_i] - self.cube_points[point_j])) == self.cube_size:
+                    point_x = tuple(projected_cube[0][point_i][0].astype(np.intc))
+                    point_y = tuple(projected_cube[0][point_j][0].astype(np.intc))
+
+                    # If line has not been drawn yet (checks both ways to avoid double lines)
+                    if (point_x, point_y) not in drawn_lines and (point_y, point_x) not in drawn_lines:
+                        # Draw line between points
+                        cv.line(frame, point_x, point_y, (0, 255, 255), 2)
+                        drawn_lines.append((point_x, point_y))

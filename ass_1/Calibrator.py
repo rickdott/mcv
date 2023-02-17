@@ -3,13 +3,15 @@ import cv2 as cv
 import glob
 from operator import itemgetter
 
+import os
+
 # Calibrator processes the images meant for calibration and calibrates the camera
 class Calibrator:
 
     CELL_SIZE = 24#mm
     BOARD_SIZE = (9, 6)
-    CALIBRATION_PATH = 'resources/calibration.npz'
-    CRITERIA = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+    CALIBRATION_PATH = 'new_img'
+    CRITERIA = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.1)
 
     objp = np.zeros((BOARD_SIZE[1]*BOARD_SIZE[0], 3), np.float32)
     # Adjust object point size for cell size, spaces each square by CELL_SIZE
@@ -42,8 +44,6 @@ class Calibrator:
             cv.imshow('img', param['img'])
 
             if len(self.click_coords) == 4:
-                
-                print(self.click_coords)
                 # Determine top left and bottom right coordinates
                 # Top left is smallest sum of x+y
                 top_left = min(self.click_coords)
@@ -65,25 +65,33 @@ class Calibrator:
                 self.click_coords.remove(bottom_left)
 
                 # Interpolate
-                left_vert = self.interpolate(top_left, bottom_left, self.BOARD_SIZE[0])
-                right_vert = self.interpolate(top_right, bottom_right, self.BOARD_SIZE[0])
+                left_vert = self.interpolate(top_left, bottom_left, self.BOARD_SIZE[1])
+                right_vert = self.interpolate(top_right, bottom_right, self.BOARD_SIZE[1])
                 
                 for left, right in zip(left_vert, right_vert):
-                    self.manual_corners.extend(self.interpolate(left, right, self.BOARD_SIZE[1]))
+                    self.manual_corners.extend(self.interpolate(left, right, self.BOARD_SIZE[0]))
                 self.manual_corners = np.array(self.manual_corners, dtype=np.float32)
                 self.manual_corners = np.expand_dims(self.manual_corners, 1)
 
+                # Refines found corner locations by looking at subpixels
+                self.manual_corners_subpix = cv.cornerSubPix(self.gray, np.copy(self.manual_corners), (5, 5), (-1, -1), self.CRITERIA)
+
                 # Add objp and manually found corners to designated lists
                 self.objpoints.append(self.objp)
-                self.imgpoints.append(self.manual_corners)
+                self.imgpoints.append(self.manual_corners_subpix)
+            
+                for point in self.manual_corners_subpix:
+                    cv.circle(param['img'], (int(point[0][0]), int(point[0][1])), 1, (255, 0, 255), thickness=cv.FILLED)
 
-                for point in self.manual_corners:
-                    cv.circle(param['img'], (int(point[0][0]), int(point[0][1])), 2, (0, 255, 0), thickness=cv.FILLED)
                 self.manual_corners = []
                 cv.imshow('img', param['img'])
 
                 
     def process_images(self):
+        # Processes all images at given location, automatically or manually detecting chessboard corners
+        epsilon = 0.01
+        prev_ret = 999
+
         for fname in self.images:
             img = cv.imread(fname)
             self.gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
@@ -91,24 +99,35 @@ class Calibrator:
             ret, corners = cv.findChessboardCorners(self.gray, self.BOARD_SIZE, None)
 
             if ret:
+                # Corners are found
                 self.objpoints.append(self.objp)
                 corners_subpix = cv.cornerSubPix(self.gray, corners, (11, 11), (-1, -1), self.CRITERIA)
                 self.imgpoints.append(corners_subpix)
+
                 cv.drawChessboardCorners(img, self.BOARD_SIZE, corners_subpix, ret)
                 cv.imshow('img', img)
                 cv.waitKey(5)
             else:
+                # Corners not found, manually request corners
                 print(f'Did not find corners for file: {fname}')
-                # Manually request corners
+
                 cv.imshow('img', img)
                 cv.setMouseCallback('img', self.click_event, param={'img': img})
                 cv.waitKey(0)
+            
+            # Calibrate camera and only use new image if projection error does not decrease by more than epsilon
+            self.ret, self.mtx, self.dist, self.rvecs, self.tvecs = cv.calibrateCamera(self.objpoints, self.imgpoints, self.gray.shape[::-1], None, None)
+            if self.ret - prev_ret > epsilon:
+                print(f'Image {fname} made projection error worse by: {self.ret - prev_ret:.4}')
+                self.objpoints.pop()
+                self.imgpoints.pop()
+            prev_ret = self.ret
 
         cv.destroyAllWindows()
     
-    def calibrate(self, recalibrate=False, save=True):
+    def calibrate(self, recalibrate=False, save=True, savename='calibration.npz'):
         if not recalibrate:
-            with np.load(self.CALIBRATION_PATH) as calibration:
+            with np.load(os.path.join(self.CALIBRATION_PATH, savename)) as calibration:
                 self.ret = calibration['ret']
                 self.mtx = calibration['mtx']
                 self.dist = calibration['dist']
@@ -116,6 +135,6 @@ class Calibrator:
                 self.tvecs = calibration['tvecs']
         else:
             self.process_images()
-            self.ret, self.mtx, self.dist, self.rvecs, self.tvecs = cv.calibrateCamera(self.objpoints, self.imgpoints, self.gray.shape[::-1], None, None)
+            print(f"Re-projection error: {self.ret:.4}")
             if save:
-                np.savez(self.CALIBRATION_PATH, ret=self.ret, mtx=self.mtx, dist=self.dist, rvecs=self.rvecs, tvecs=self.tvecs)
+                np.savez(os.path.join(self.CALIBRATION_PATH, savename), ret=self.ret, mtx=self.mtx, dist=self.dist, rvecs=self.rvecs, tvecs=self.tvecs)

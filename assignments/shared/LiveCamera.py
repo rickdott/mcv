@@ -58,7 +58,7 @@ class LiveCamera():
                 # Spacebar
                 print("Saving image...")
                 now = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
-                fname = f'examples/img_{now}.png'
+                fname = f'img_{now}.png'
                 cv.imwrite(fname, frame)
         
         # Clean up
@@ -66,7 +66,7 @@ class LiveCamera():
         cam.release()
 
     def draw_cube(self, projected_cube, frame):
-        # From any corner, there should be a line to any other corner where only one coordinate changes
+        # Intuition: From any corner, there should be a line to any other corner where only one coordinate changes
         amt_points = len(projected_cube[0])
         drawn_lines = []
 

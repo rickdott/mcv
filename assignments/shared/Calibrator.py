@@ -1,16 +1,15 @@
 import numpy as np
 import cv2 as cv
 import glob
-from operator import itemgetter
-
 import os
+from operator import itemgetter
 
 # Calibrator processes the images meant for calibration and calibrates the camera
 class Calibrator:
 
     CELL_SIZE = 24#mm
     BOARD_SIZE = (9, 6)
-    CALIBRATION_PATH = 'new_img'
+    CALIBRATION_PATH = 'resources'
     CRITERIA = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.1)
 
     objp = np.zeros((BOARD_SIZE[1]*BOARD_SIZE[0], 3), np.float32)

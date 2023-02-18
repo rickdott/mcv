@@ -1,4 +1,4 @@
-from Calibrator import Calibrator
+from shared.Calibrator import Calibrator
 
 calibrator = Calibrator('resources/img_*.png')
 

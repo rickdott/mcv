@@ -4,7 +4,7 @@ from shared.LiveCamera import LiveCamera
 # Without manual files (does not matter if not recalibrating)
 calibrator = Calibrator('resources/img_*[!X].png')
 
-calibrator.calibrate(recalibrate=False, save=False, savename='calibration.npz')
+calibrator.calibrate(recalibrate=True, save=False, savename='calibration.npz')
 
 live = LiveCamera(calibrator)
 live.start()

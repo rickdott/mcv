@@ -77,6 +77,7 @@ class Calibrator:
                 cv.imshow('img', param['img'])
 
     def process_images(self):
+        # Processes all images at given location, automatically or manually detecting chessboard corners, supports filenames for images and a list of frames for video
         if self.path is not None:
             for idx, fname in enumerate(self.images):
                 frame = cv.imread(fname)
@@ -87,9 +88,8 @@ class Calibrator:
         cv.destroyAllWindows()
 
     def process_image(self, frame, index):
-        # Processes all images at given location, automatically or manually detecting chessboard corners
+        # Process a single frame, finding chessboard corners and calibrating the camera
         self.gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-
         ret, corners = cv.findChessboardCorners(self.gray, self.board_size, None)
 
         if ret:
@@ -118,6 +118,7 @@ class Calibrator:
         self.prev_ret = self.ret
     
     def calibrate(self, recalibrate=False, save=True, savename='calibration.npz'):
+        # Loads existing calibration or calibrates the camera
         if not recalibrate:
             with np.load(os.path.join(savename)) as calibration:
                 self.ret = calibration['ret']

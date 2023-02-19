@@ -15,7 +15,7 @@ for cam in range(1, 4):
         ret, frame = vid.read()
         if ret:
             # cv.imshow('Intrinsics', frame)
-            frames.add(frame)
+            frames.append(frame)
             # Advance 250 frames == 5 seconds (video is 50fps)
             count += 250
             vid.set(cv.CAP_PROP_POS_FRAMES, count)
@@ -25,5 +25,6 @@ for cam in range(1, 4):
             break
     
     
-    calibrator = Calibrator()
+    calibrator = Calibrator(frames=frames, board_size=(8, 6))
+    calibrator.calibrate(recalibrate=True, save=True, savename=os.path.join('assignments', 'data', f'cam{cam}', 'intrinsics.npz'))
     cv.waitKey(0)

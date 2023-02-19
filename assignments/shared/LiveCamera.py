@@ -30,7 +30,7 @@ class LiveCamera():
             # Convert to grayscale and attempt to find chessboardcorners 
             # use cv.CALIB_CB_FAST_CHECK since many webcam frames do not include chessboard
             gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-            ret, corners = cv.findChessboardCorners(gray, self.calibrator.BOARD_SIZE, None, flags=cv.CALIB_CB_FAST_CHECK)
+            ret, corners = cv.findChessboardCorners(gray, self.calibrator.board_size, None, flags=cv.CALIB_CB_FAST_CHECK)
             if ret:
                 # Find better corner locations (more exact than integer pixels)
                 corners_subpix = cv.cornerSubPix(gray, corners, (5, 5), (-1, -1), self.calibrator.CRITERIA)
@@ -39,7 +39,7 @@ class LiveCamera():
                 _, rvec, tvec = cv.solvePnP(self.calibrator.objp, corners_subpix, self.calibrator.mtx, self.calibrator.dist)
 
                 # Draw frame axes (x, y, z) directions on frame
-                cv.drawFrameAxes(frame, self.calibrator.mtx, self.calibrator.dist, rvec, tvec, self.calibrator.CELL_SIZE * (self.calibrator.BOARD_SIZE[1] - 1))
+                cv.drawFrameAxes(frame, self.calibrator.mtx, self.calibrator.dist, rvec, tvec, self.calibrator.CELL_SIZE * (self.calibrator.board_size[1] - 1))
 
                 # Find points in 2d image where cube_points should be given camera matrix and rvec/tvec
                 projected_cube = cv.projectPoints(self.cube_points, rvec, tvec, self.calibrator.mtx, self.calibrator.dist)

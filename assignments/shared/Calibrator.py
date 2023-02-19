@@ -11,6 +11,7 @@ class Calibrator:
     BOARD_SIZE = (9, 6)
     CALIBRATION_PATH = 'resources'
     CRITERIA = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.1)
+    EPSILON = 0.01
 
     objp = np.zeros((BOARD_SIZE[1]*BOARD_SIZE[0], 3), np.float32)
     # Adjust object point size for cell size, spaces each square by CELL_SIZE
@@ -19,12 +20,16 @@ class Calibrator:
     objpoints = []
     imgpoints = []
 
-    def __init__(self, path):
+    def __init__(self, path=None, frames=None):
         # Constructor of Calibrator class, finds paths of images that should be used
         self.path = path
-        self.images = glob.glob(path)
+        if path is not None:
+            self.images = glob.glob(path)
+        if frames is not None:
+            self.frames = frames
         self.click_coords = []
         self.manual_corners = []
+        self.prev_ret = 999
 
     def interpolate(self, start_coord, end_coord, stepsize):
         # Linearly interpolate between two coordinates, finding stepsize
@@ -85,44 +90,46 @@ class Calibrator:
                 self.manual_corners = []
                 cv.imshow('img', param['img'])
 
-                
     def process_images(self):
-        # Processes all images at given location, automatically or manually detecting chessboard corners
-        epsilon = 0.01
-        prev_ret = 999
-
-        for fname in self.images:
-            img = cv.imread(fname)
-            self.gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-
-            ret, corners = cv.findChessboardCorners(self.gray, self.BOARD_SIZE, None)
-
-            if ret:
-                # Corners are found
-                self.objpoints.append(self.objp)
-                corners_subpix = cv.cornerSubPix(self.gray, corners, (11, 11), (-1, -1), self.CRITERIA)
-                self.imgpoints.append(corners_subpix)
-
-                cv.drawChessboardCorners(img, self.BOARD_SIZE, corners_subpix, ret)
-                cv.imshow('img', img)
-                cv.waitKey(5)
-            else:
-                # Corners not found, manually request corners
-                print(f'Did not find corners for file: {fname}')
-
-                cv.imshow('img', img)
-                cv.setMouseCallback('img', self.click_event, param={'img': img})
-                cv.waitKey(0)
-            
-            # Calibrate camera and only use new image if projection error does not decrease by more than epsilon
-            self.ret, self.mtx, self.dist, self.rvecs, self.tvecs = cv.calibrateCamera(self.objpoints, self.imgpoints, self.gray.shape[::-1], None, None)
-            if self.ret - prev_ret > epsilon:
-                print(f'Image {fname} made projection error worse by: {self.ret - prev_ret:.4}')
-                self.objpoints.pop()
-                self.imgpoints.pop()
-            prev_ret = self.ret
-
+        if self.path is not None:
+            for idx, fname in enumerate(self.images):
+                frame = cv.imread(fname)
+                self.process_image(frame, idx)
+        else:
+            for idx, frame in enumerate(self.frames):
+                self.process_image(frame, idx)
         cv.destroyAllWindows()
+
+    def process_image(self, frame, index):
+        # Processes all images at given location, automatically or manually detecting chessboard corners
+        self.gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+
+        ret, corners = cv.findChessboardCorners(self.gray, self.BOARD_SIZE, None)
+
+        if ret:
+            # Corners are found
+            self.objpoints.append(self.objp)
+            corners_subpix = cv.cornerSubPix(self.gray, corners, (11, 11), (-1, -1), self.CRITERIA)
+            self.imgpoints.append(corners_subpix)
+
+            cv.drawChessboardCorners(frame, self.BOARD_SIZE, corners_subpix, ret)
+            cv.imshow('img', frame)
+            cv.waitKey(5)
+        else:
+            # Corners not found, manually request corners
+            print(f'Did not find corners for frame: {index}')
+
+            cv.imshow('img', frame)
+            cv.setMouseCallback('img', self.click_event, param={'img': frame})
+            cv.waitKey(0)
+        
+        # Calibrate camera and only use new image if projection error does not decrease by more than epsilon
+        self.ret, self.mtx, self.dist, self.rvecs, self.tvecs = cv.calibrateCamera(self.objpoints, self.imgpoints, self.gray.shape[::-1], None, None)
+        if self.ret - self.prev_ret > self.EPSILON:
+            print(f'Frame {index} made projection error worse by: {self.ret - self.prev_ret:.4}')
+            self.objpoints.pop()
+            self.imgpoints.pop()
+        self.prev_ret = self.ret
     
     def calibrate(self, recalibrate=False, save=True, savename='calibration.npz'):
         if not recalibrate:

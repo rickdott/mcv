@@ -8,7 +8,7 @@
             "name": "Debug online",
             "type": "python",
             "request": "launch",
-            "program": "ass_1/online.py",
+            "program": "assignments/online1.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }

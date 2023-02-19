@@ -2,7 +2,7 @@ from shared.Calibrator import Calibrator
 from shared.LiveCamera import LiveCamera
 
 # Without manual files (does not matter if not recalibrating)
-calibrator = Calibrator('resources/img_*[!X].png')
+calibrator = Calibrator(path='resources/img_*[X].png')
 
 calibrator.calibrate(recalibrate=True, save=False, savename='calibration.npz')
 

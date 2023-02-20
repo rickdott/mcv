@@ -7,15 +7,13 @@ from operator import itemgetter
 # Calibrator processes the images meant for calibration and calibrates the camera
 class Calibrator:
 
-    CELL_SIZE = 24#mm
-
     CRITERIA = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 40, 0.001)
     EPSILON = 0.01
 
     objpoints = []
     imgpoints = []
 
-    def __init__(self, path=None, frames=None, board_size=(9,6)):
+    def __init__(self, path=None, frames=None, board_size=(9,6), cell_size=24):
         # Constructor of Calibrator class, finds paths of images that should be used
         self.path = path
         if path is not None:
@@ -24,12 +22,13 @@ class Calibrator:
             self.frames = frames
         self.click_coords = []
         self.manual_corners = []
-        self.prev_ret = 999
+        self.prev_ret = 1
+        self.cell_size = cell_size
 
         self.board_size = board_size
         self.objp = np.zeros((self.board_size[1]*self.board_size[0], 3), np.float32)
-        # Adjust object point size for cell size, spaces each square by CELL_SIZE
-        self.objp[:, :2] = np.mgrid[0:self.board_size[0], 0:self.board_size[1]].T.reshape(-1, 2) * self.CELL_SIZE
+        # Adjust object point size for cell size, spaces each square by cell_size
+        self.objp[:, :2] = np.mgrid[0:self.board_size[0], 0:self.board_size[1]].T.reshape(-1, 2) * self.cell_size
 
     def interpolate(self, start_coord, end_coord, stepsize):
         # Linearly interpolate between two coordinates, finding stepsize
@@ -51,7 +50,7 @@ class Calibrator:
                 # Looks within masked area (between 4 points) for corners up to a maximum of board_x*board_y
                 mask = np.zeros(self.gray.shape, dtype=np.uint8)
                 cv.fillConvexPoly(mask, np.expand_dims(np.array(self.click_coords, dtype=np.int32), 1), 1)
-                corners = cv.goodFeaturesToTrack(image=self.gray, maxCorners=self.board_size[0] * self.board_size[1], qualityLevel=0.01, minDistance=int(self.CELL_SIZE * 0.8), corners=None, mask=mask, blockSize=3, gradientSize=3, useHarrisDetector=False, k=0.04)
+                corners = cv.goodFeaturesToTrack(image=self.gray, maxCorners=self.board_size[0] * self.board_size[1], qualityLevel=0.01, minDistance=int(self.cell_size * 0.8), corners=None, mask=mask, blockSize=3, gradientSize=3, useHarrisDetector=False, k=0.04)
 
                 if corners.shape[0] < self.board_size[0] * self.board_size[1]:
                     corners = []
@@ -111,6 +110,7 @@ class Calibrator:
         
         # Calibrate camera and only use new image if projection error does not decrease by more than epsilon
         self.ret, self.mtx, self.dist, self.rvecs, self.tvecs = cv.calibrateCamera(self.objpoints, self.imgpoints, self.gray.shape[::-1], None, None)
+        print(f"Re-projection error: {self.ret:.4}")
         if self.ret - self.prev_ret > self.EPSILON:
             print(f'Frame {index} made projection error worse by: {self.ret - self.prev_ret:.4}')
             self.objpoints.pop()
@@ -130,6 +130,5 @@ class Calibrator:
             self.process_images()
             # Final calibration with only improving frames
             self.ret, self.mtx, self.dist, self.rvecs, self.tvecs = cv.calibrateCamera(self.objpoints, self.imgpoints, self.gray.shape[::-1], None, None)
-            print(f"Re-projection error: {self.ret:.4}")
             if save:
                 np.savez(os.path.join(savename), ret=self.ret, mtx=self.mtx, dist=self.dist, rvecs=self.rvecs, tvecs=self.tvecs)

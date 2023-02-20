@@ -5,7 +5,7 @@ from shared.Calibrator import Calibrator
 
 # Obtain intrinsic camera parameters
 # cv.VideoCapture('assignments/data/cam1/intrinsics.avi')
-for cam in range(1, 4):
+for cam in range(1, 5):
     intrinsics_path = os.path.join('assignments', 'data', f'cam{cam}', 'intrinsics.avi')
     vid = cv.VideoCapture(intrinsics_path)
 
@@ -24,7 +24,7 @@ for cam in range(1, 4):
             vid.release()
             break
     
-    
-    calibrator = Calibrator(frames=frames, board_size=(8, 6))
+    # Board and cell size adapted from checkerboard.xml
+    calibrator = Calibrator(frames=frames, board_size=(8, 6), cell_size=115)
     calibrator.calibrate(recalibrate=True, save=True, savename=os.path.join('assignments', 'data', f'cam{cam}', 'intrinsics.npz'))
     cv.waitKey(0)

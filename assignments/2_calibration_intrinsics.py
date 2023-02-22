@@ -4,7 +4,6 @@ import cv2 as cv
 from shared.Calibrator import Calibrator
 
 # Obtain intrinsic camera parameters
-# cv.VideoCapture('assignments/data/cam1/intrinsics.avi')
 for cam in range(1, 5):
     intrinsics_path = os.path.join('assignments', 'data', f'cam{cam}', 'intrinsics.avi')
     vid = cv.VideoCapture(intrinsics_path)

@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug online",
+            "name": "Debug 2 (extrinsics)",
             "type": "python",
             "request": "launch",
-            "program": "assignments/online1.py",
+            "program": "assignments/2_calibration_extrinsics.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }

@@ -8,7 +8,7 @@ class LiveCamera():
     def __init__(self, calibrator):
         # Constructor of LiveCamera class, incorporate existing calibrator
         self.calibrator = calibrator
-        self.cube_size = self.calibrator.CELL_SIZE * 3
+        self.cube_size = self.calibrator.cell_size * 3
 
         # 8 points that make up the cube shape in coordinate (XYZ) space
         self.cube_points = np.float32([[0,0,0], [0,self.cube_size,0], [self.cube_size,self.cube_size,0], [self.cube_size,0,0],
@@ -39,7 +39,7 @@ class LiveCamera():
                 _, rvec, tvec = cv.solvePnP(self.calibrator.objp, corners_subpix, self.calibrator.mtx, self.calibrator.dist)
 
                 # Draw frame axes (x, y, z) directions on frame
-                cv.drawFrameAxes(frame, self.calibrator.mtx, self.calibrator.dist, rvec, tvec, self.calibrator.CELL_SIZE * (self.calibrator.board_size[1] - 1))
+                cv.drawFrameAxes(frame, self.calibrator.mtx, self.calibrator.dist, rvec, tvec, self.calibrator.cell_size * (self.calibrator.board_size[1] - 1))
 
                 # Find points in 2d image where cube_points should be given camera matrix and rvec/tvec
                 projected_cube = cv.projectPoints(self.cube_points, rvec, tvec, self.calibrator.mtx, self.calibrator.dist)

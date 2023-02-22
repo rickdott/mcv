@@ -20,5 +20,9 @@ for cam in range(1, 5):
 
     # Board and cell size adapted from checkerboard.xml
     calibrator = Calibrator(frames=frames, board_size=(8, 6), cell_size=115, intrinsics_path=intrinsics_path)
-    calibrator.calibrate(recalibrate=True, save=True, savename=os.path.join('assignments', 'data', f'cam{cam}', 'extrinsics.npz'))
-    cv.waitKey(0)
+    calibrator.calibrate(recalibrate=True, save=True, savename=os.path.join('assignments', 'data', f'cam{cam}', 'config.npz'))
+
+    # Added due to issues with lists inside calibrator remaining in new loop
+    del calibrator
+    vid.release()
+    cv.destroyAllWindows()

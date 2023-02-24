@@ -35,7 +35,7 @@ for cam in range(1, 5):
             biggest_contour = max(contours, key=cv.contourArea)
 
             mask = np.zeros(fg.shape, np.uint8)
-            # Perhaps dilate or erode? Better to overestimate area so dilate?
+            # Perhaps dilate or erode? Better to overestimate area so dilate? Check during task 3
             cv.drawContours(mask, [biggest_contour], 0, 255, -1)
             cv.imshow('image', frame)
             cv.imshow('fg', mask)

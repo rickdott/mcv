@@ -2,7 +2,6 @@ import numpy as np
 import cv2 as cv
 import glob
 import os
-from operator import itemgetter
 
 # Calibrator processes the images meant for calibration and calibrates the camera
 class Calibrator:
@@ -106,24 +105,18 @@ class Calibrator:
                 win_size = (4, 4) if self.intrinsics_path is not None else (11, 11)
                 corners_subpix = cv.cornerSubPix(warped_gray, corners, win_size, (-1, -1), self.CRITERIA)
 
+                # Inverse perspective transformation
                 _, IM = cv.invert(M)
+                points_transformed = cv.perspectiveTransform(corners_subpix, IM)
 
-                for i in range(corners_subpix.shape[0]):
-                    x = corners_subpix[i, 0, 0]
-                    y = corners_subpix[i, 0, 1]
-                    
-                    point = np.float32([x, y] + [1])
-                    x, y, z = np.dot(IM, point)
-                    new_x = x/z
-                    new_y = y/z
-                    corners_subpix[i, 0, 0] = new_x
-                    corners_subpix[i, 0, 1] = new_y
-                    cv.circle(self.frame, (int(new_x), int(new_y)), 2, (0, 0, 255), thickness=cv.FILLED)
+                for point in points_transformed:
+                    cv.circle(self.frame, (int(point[0][0]), int(point[0][1])), 2, (0, 0, 255), thickness=cv.FILLED)
+
                 cv.imshow('img', self.frame)
 
                 self.click_coords = []
 
-                self.imgpoints.append(corners_subpix)
+                self.imgpoints.append(points_transformed)
                 self.objpoints.append(self.objp)
 
     def process_images(self):
@@ -198,6 +191,5 @@ class Calibrator:
                 cv.imshow('img', self.frame)
                 cv.waitKey(0)
                 if save:
-                    rmtx = cv.Rodrigues(rvec)[0]
                     # Save intrinsics that were used plus newly calculated extrinsics
-                    np.savez(savename, ret=self.ret, mtx=self.mtx, dist=self.dist, rvecs=self.rvecs, tvecs=self.tvecs, rmtx=rmtx, tvec=tvec)
+                    np.savez(savename, ret=self.ret, mtx=self.mtx, dist=self.dist, rvecs=self.rvecs, tvecs=self.tvecs, rvec=rvec, tvec=tvec)

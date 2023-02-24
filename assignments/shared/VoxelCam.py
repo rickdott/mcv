@@ -22,16 +22,16 @@ class VoxelCam():
 
         self.video = cv.VideoCapture(video_path)
 
-        self.table = np.empty(self.TABLE_SIZE, dtype=tuple)
+        self.table = np.ones(self.TABLE_SIZE, dtype=tuple)
     
     # Advance the video of this cam by one frame and return it
     def next_frame(self):
         if self.video.isOpened():
-            ret, frame = self.video.read()
-            if ret:
-                return frame
-            else:
-                return None
+            ret, self.frame = self.video.read()
+            return ret
+    
+    def get_foreground(self):
+        return self.subtractor.get_foreground(self.frame)
     
     # Since objects like cv.VideoCapture and BackgroundSubtractorKNN are not pickle-able,
     # create subset of info needed for creating the lookup table and return it
@@ -41,11 +41,5 @@ class VoxelCam():
             'dist': self.dist,
             'rvec': self.rvec,
             'tvec': self.tvec,
-            'table': self.table
+            'idx': self.idx
         }
-    
-    def calc_table(self):
-        #     for x in range(cam.table.shape[0]):
-#         for y in range(cam.table.shape[1]):
-#             for z in range(cam.table.shape[2]):
-#                 cam.table[x, y, z] = cv.projectPoints(np.float32([x, y, z]), cam.rvec, cam.tvec, cam.mtx, cam.dist)

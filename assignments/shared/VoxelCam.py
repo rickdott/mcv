@@ -1,10 +1,10 @@
 from shared.BackgroundSubtractor import BackgroundSubtractor
 import os, numpy as np, cv2 as cv
 
+TABLE_SIZE = (10,10,10)
 class VoxelCam():
 
     BASE_PATH = os.path.join('assignments', 'data')
-    TABLE_SIZE = (100, 100, 100)
 
     def __init__(self, idx):
         self.idx = idx
@@ -22,7 +22,7 @@ class VoxelCam():
 
         self.video = cv.VideoCapture(video_path)
 
-        self.table = np.ones(self.TABLE_SIZE, dtype=tuple)
+        self.table = np.ones(TABLE_SIZE, dtype=tuple)
     
     # Advance the video of this cam by one frame and return it
     def next_frame(self):

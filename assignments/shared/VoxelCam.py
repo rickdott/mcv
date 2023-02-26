@@ -2,8 +2,13 @@ from shared.BackgroundSubtractor import BackgroundSubtractor
 import os, numpy as np, cv2 as cv
 
 TABLE_SIZE = (128, 128, 64)
-BASE_PATH = os.path.join('assignments', 'data')
-# BASE_PATH = os.path.join('data')
+
+# So it runs when running from mcv folder and assignments folder
+if os.getcwd().endswith('assignments'):
+    BASE_PATH = os.path.join('data')
+else:
+    BASE_PATH = os.path.join('assignments', 'data')
+
 
 class VoxelCam():
 

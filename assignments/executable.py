@@ -10,6 +10,15 @@ from assignment import set_voxel_positions, generate_grid, get_cam_positions, ge
 from engine.camera import Camera
 from engine.config import config
 
+import multiprocessing as mp
+from shared.VoxelReconstructor import VoxelReconstructor
+
+if __name__ == '__main__':
+	# set the start method
+    mp.set_start_method('spawn')
+
+    vc = VoxelReconstructor(create_table=True)
+
 cube, hdrbuffer, blurbuffer, lastPosX, lastPosY = None, None, None, None, None
 firstTime = True
 window_width, window_height = config['window_width'], config['window_height']
@@ -104,7 +113,7 @@ def main():
     light_pos = glm.vec3(0.5, 0.5, 0.5)
     perspective = glm.perspective(45, window_width / window_height, config['near_plane'], config['far_plane'])
 
-    cam_rot_matrices = get_cam_rotation_matrices()
+    cam_rot_matrices = get_cam_rotation_matrices(vc)
     cam_shapes = [Model('resources/models/camera.json', cam_rot_matrices[c]) for c in range(4)]
     square = Model('resources/models/square.json')
     cube = Model('resources/models/cube.json')
@@ -120,7 +129,7 @@ def main():
     grid_positions = generate_grid(config['world_width'], config['world_width'])
     square.set_multiple_positions(grid_positions)
 
-    cam_positions = get_cam_positions()
+    cam_positions = get_cam_positions(vc)
     for c, cam_pos in enumerate(cam_positions):
         cam_shapes[c].set_multiple_positions([cam_pos])
 
@@ -179,7 +188,7 @@ def key_callback(window, key, scancode, action, mods):
         glfw.set_window_should_close(window, glfw.TRUE)
     if key == glfw.KEY_G and action == glfw.PRESS:
         global cube
-        positions = set_voxel_positions(config['world_width'], config['world_height'], config['world_width'])
+        positions = set_voxel_positions(vc)
         cube.set_multiple_positions(positions)
 
 

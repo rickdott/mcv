@@ -3,23 +3,34 @@ import os
 import numpy as np
 from shared.VoxelCam import BASE_PATH, VoxelCam
 import cv2 as cv
+import glm
 
 # calibrator = Calibrator('resources/img_*.png')
 
-# for cam in range(1, 5):
+for cam in range(1, 5):
 #     # intrinsics_path = os.path.join('assignments', 'data', f'cam{cam}', 'config.npz')
 #     # calibrator.calibrate(False, False, savename=intrinsics_path)
 #     # print(calibrator.ret)
 #     # print(calibrator.mtx)
-#     config_path = os.path.join('assignments', 'data', f'cam{cam}', 'config.npz')
-#     with np.load(os.path.join(config_path)) as calibration:
-#         ret = calibration['ret']
-#         mtx = calibration['mtx']
-#         dist = calibration['dist']
-#         rvecs = calibration['rvecs']
-#         tvecs = calibration['tvecs']
-#         rvec = calibration['rvec']
-#         tvec = calibration['tvec']
+    config_path = os.path.join('assignments', 'data', f'cam{cam}', 'config.npz')
+    with np.load(os.path.join(config_path)) as calibration:
+        ret = calibration['ret']
+        mtx = calibration['mtx']
+        dist = calibration['dist']
+        rvecs = calibration['rvecs']
+        tvecs = calibration['tvecs']
+        rvec = calibration['rvec']
+        tvec = calibration['tvec']
+    # print(rvec.T * tvec)
+    rmtx = cv.Rodrigues(rvec)[0]
+    pos = -rmtx.T * np.matrix(tvec)
+    print(pos)
+    I = np.identity(4)
+    I[0:3,0:3] = rmtx
+    loc = rmtx.T * tvec
+
+    print(glm.mat4(*list(I.flatten())))
+
 #     print(f'{cam}: INTRINSICS')
 #     print(ret)
 #     print(mtx)
@@ -56,5 +67,3 @@ import cv2 as cv
 # print(np.ones([10, 10]))
 
 # 
-for i in range(int(-10/2), int(10/2)):
-    print(i)

@@ -1,14 +1,15 @@
 from shared.BackgroundSubtractor import BackgroundSubtractor
 import os, numpy as np, cv2 as cv
 
-TABLE_SIZE = (10,10,10)
-class VoxelCam():
+TABLE_SIZE = (128, 128, 64)
+BASE_PATH = os.path.join('assignments', 'data')
+# BASE_PATH = os.path.join('data')
 
-    BASE_PATH = os.path.join('assignments', 'data')
+class VoxelCam():
 
     def __init__(self, idx):
         self.idx = idx
-        cam_path = os.path.join(self.BASE_PATH, f'cam{idx}')
+        cam_path = os.path.join(BASE_PATH, f'cam{idx}')
         background_path = os.path.join(cam_path, 'background.avi')
         video_path = os.path.join(cam_path, 'video.avi')
         config_path = os.path.join(cam_path, 'config.npz')

@@ -8,7 +8,7 @@
             "name": "Debug 2 (extrinsics)",
             "type": "python",
             "request": "launch",
-            "program": "assignments/2_calibration_extrinsics.py",
+            "program": "assignments/2_voxel_reconstruction.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }

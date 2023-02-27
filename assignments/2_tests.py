@@ -6,8 +6,6 @@ import cv2 as cv
 import glm
 
 # calibrator = Calibrator('resources/img_*.png')
-for i in range(10):
-    print(i)
 for cam in range(1, 5):
 #     # intrinsics_path = os.path.join('assignments', 'data', f'cam{cam}', 'config.npz')
 #     # calibrator.calibrate(False, False, savename=intrinsics_path)
@@ -22,16 +20,19 @@ for cam in range(1, 5):
         tvecs = calibration['tvecs']
         rvec = calibration['rvec']
         tvec = calibration['tvec']
-    print(mtx)
-#     # print(rvec.T * tvec)
-#     rmtx = cv.Rodrigues(rvec)[0]
-#     pos = -rmtx.T * np.matrix(tvec)
-#     print(pos)
-#     I = np.identity(4)
-#     I[0:3,0:3] = rmtx
-#     loc = rmtx.T * tvec
+    # print(f'Cam{cam}')
+    # print(mtx)
+    # print(rvec.T * tvec)
+    rmtx = cv.Rodrigues(rvec)[0]
+    pos = -rmtx.T * np.matrix(tvec)
+    # print(pos)
+    I = np.identity(4)
+    I[0:3,0:3] = rmtx
+    glm_m = glm.mat4(I)
+    rot_m = glm.rotate(glm_m, glm.radians(90), (0, 1, 0))
+    print(rot_m)
+    # loc = rmtx.T * tvec
 
-#     print(glm.mat4(*list(I.flatten())))
 
 #     # grid = np.float32(np.mgrid[-TABLE_SIZE[0]:TABLE_SIZE[0], -TABLE_SIZE[1]:TABLE_SIZE[1], 0:TABLE_SIZE[2]])
 #     steps = 100j

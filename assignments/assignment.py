@@ -33,10 +33,18 @@ def get_cam_positions(vc):
     # TODO: You need to input the estimated locations of the 4 cameras in the world coordinates.
     positions = []
     for cam in vc.cams:
+        # Calculate rotation matrix and determine position
         rmtx = cv.Rodrigues(cam.rvec)[0]
-        pos = (-rmtx.T * np.matrix(cam.tvec)) / 100
-        positions.append(pos)
-        print(pos)
+        pos = -rmtx.T * np.matrix(cam.tvec)
+
+        # Swap Y and Z
+        pos[[1, 2]] = pos[[2, 1]]
+
+        # Take absolute of height variable (calibration had -z as positive height)
+        pos[1] = abs(pos[1])
+        # Divide by 115 to get cameras closer
+        # TODO: Find better number after voxels show up
+        positions.append(pos/115)
     return positions
 
 
@@ -48,5 +56,8 @@ def get_cam_rotation_matrices(vc):
         I = np.identity(4)
         rmtx = cv.Rodrigues(cam.rvec)[0]
         I[0:3,0:3] = rmtx
-        rotations.append(glm.mat4(I))
+        
+        glm_mat = glm.mat4(I)
+        glm_mat = glm.rotate(glm_mat, glm.radians(90), (0, 1, 1))
+        rotations.append(glm_mat)
     return rotations

@@ -103,11 +103,11 @@ class Calibrator:
                 corners = np.expand_dims(np.array(corners, dtype=np.float32), 1)
                 # Before inversely transforming the corners back to original 2d space, find better locations using subpixels
                 win_size = (4, 4) if self.intrinsics_path is not None else (11, 11)
-                corners_subpix = cv.cornerSubPix(warped_gray, corners, win_size, (-1, -1), self.CRITERIA)
+                # corners_subpix = cv.cornerSubPix(warped_gray, corners, win_size, (-1, -1), self.CRITERIA)
 
                 # Inverse perspective transformation
                 _, IM = cv.invert(M)
-                points_transformed = cv.perspectiveTransform(corners_subpix, IM)
+                points_transformed = cv.perspectiveTransform(corners, IM)
 
                 for point in points_transformed:
                     cv.circle(self.frame, (int(point[0][0]), int(point[0][1])), 2, (0, 0, 255), thickness=cv.FILLED)

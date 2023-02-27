@@ -1,7 +1,7 @@
 from shared.BackgroundSubtractor import BackgroundSubtractor
 import os, numpy as np, cv2 as cv
 
-TABLE_SIZE = (128, 128, 64)
+TABLE_SIZE = (500, 500, 500)
 
 # So it runs when running from mcv folder and assignments folder
 if os.getcwd().endswith('assignments'):

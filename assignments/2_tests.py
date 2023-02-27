@@ -1,12 +1,13 @@
 from shared.Calibrator import Calibrator
 import os
 import numpy as np
-from shared.VoxelCam import BASE_PATH, VoxelCam
+from shared.VoxelCam import BASE_PATH, VoxelCam, TABLE_SIZE
 import cv2 as cv
 import glm
 
 # calibrator = Calibrator('resources/img_*.png')
-
+for i in range(10):
+    print(i)
 for cam in range(1, 5):
 #     # intrinsics_path = os.path.join('assignments', 'data', f'cam{cam}', 'config.npz')
 #     # calibrator.calibrate(False, False, savename=intrinsics_path)
@@ -21,16 +22,28 @@ for cam in range(1, 5):
         tvecs = calibration['tvecs']
         rvec = calibration['rvec']
         tvec = calibration['tvec']
-    # print(rvec.T * tvec)
-    rmtx = cv.Rodrigues(rvec)[0]
-    pos = -rmtx.T * np.matrix(tvec)
-    print(pos)
-    I = np.identity(4)
-    I[0:3,0:3] = rmtx
-    loc = rmtx.T * tvec
+    print(mtx)
+#     # print(rvec.T * tvec)
+#     rmtx = cv.Rodrigues(rvec)[0]
+#     pos = -rmtx.T * np.matrix(tvec)
+#     print(pos)
+#     I = np.identity(4)
+#     I[0:3,0:3] = rmtx
+#     loc = rmtx.T * tvec
 
-    print(glm.mat4(*list(I.flatten())))
+#     print(glm.mat4(*list(I.flatten())))
 
+#     # grid = np.float32(np.mgrid[-TABLE_SIZE[0]:TABLE_SIZE[0], -TABLE_SIZE[1]:TABLE_SIZE[1], 0:TABLE_SIZE[2]])
+#     steps = 100j
+#     grid = np.float32(np.mgrid[-TABLE_SIZE[0]:TABLE_SIZE[0]:steps, -TABLE_SIZE[1]:TABLE_SIZE[1]:steps, 0:TABLE_SIZE[2]])
+#     # grid = np.float32(np.meshgrid(np.arange(0, TABLE_SIZE[0]), np.arange(0, TABLE_SIZE[1]), np.arange(0, TABLE_SIZE[2])))
+#     grid_t = grid.T.reshape(-1, 3) * 115
+
+#     # Project indices to 2d
+#     proj_list = cv.projectPoints(grid_t, cam['rvec'], cam['tvec'], cam['mtx'], cam['dist'])[0]
+
+#     # Create table of (X, Y, Z, 2) shape containing 2d coordinates
+#     table = np.int_(proj_list).reshape(list(TABLE_SIZE) + [2], order='F')
 #     print(f'{cam}: INTRINSICS')
 #     print(ret)
 #     print(mtx)

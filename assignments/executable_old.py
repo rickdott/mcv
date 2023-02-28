@@ -13,6 +13,12 @@ from engine.config import config
 import multiprocessing as mp
 from shared.VoxelReconstructor import VoxelReconstructor
 
+if __name__ == '__main__':
+	# set the start method
+    mp.set_start_method('spawn')
+
+    vc = VoxelReconstructor(create_table=True)
+
 cube, hdrbuffer, blurbuffer, lastPosX, lastPosY = None, None, None, None, None
 firstTime = True
 window_width, window_height = config['window_width'], config['window_height']
@@ -97,12 +103,10 @@ def main():
     hdr_program.setInt('sceneMap', 0)
     hdr_program.setInt('bloomMap', 1)
 
-    window_width_px, window_height_px = glfw.get_framebuffer_size(window)
-
     hdrbuffer = HDRBuffer()
-    hdrbuffer.create(window_width_px, window_height_px)
+    hdrbuffer.create(window_width, window_height)
     blurbuffer = BlurBuffer()
-    blurbuffer.create(window_width_px, window_height_px)
+    blurbuffer.create(window_width, window_height)
 
     bloom = Bloom(hdrbuffer, hdr_program, blurbuffer, blur_program)
 
@@ -122,12 +126,12 @@ def main():
     depth = load_texture_2d('resources/textures/depth.jpg')
     depth_grid = load_texture_2d('resources/textures/depth_grid.jpg')
 
-    grid_positions, grid_colors = generate_grid(config['world_width'], config['world_width'])
-    square.set_multiple_positions(grid_positions, grid_colors)
+    grid_positions = generate_grid(config['world_width'], config['world_width'])
+    square.set_multiple_positions(grid_positions)
 
-    cam_positions, cam_colors = get_cam_positions(vc)
+    cam_positions = get_cam_positions(vc)
     for c, cam_pos in enumerate(cam_positions):
-        cam_shapes[c].set_multiple_positions([cam_pos], [cam_colors[c]])
+        cam_shapes[c].set_multiple_positions([cam_pos])
 
     last_time = glfw.get_time()
     while not glfw.window_should_close(window):
@@ -149,9 +153,7 @@ def main():
             cam.draw_multiple(depth_program)
 
         hdrbuffer.bind()
-
-        window_width_px, window_height_px = glfw.get_framebuffer_size(window)
-        glViewport(0, 0, window_width_px, window_height_px)
+        glViewport(0, 0, window_width, window_height)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         draw_objs(square, program, perspective, light_pos, texture_grid, normal_grid, specular_grid, depth_grid)
@@ -175,11 +177,10 @@ def resize_callback(window, w, h):
         global window_width, window_height, hdrbuffer, blurbuffer
         window_width, window_height = w, h
         glm.perspective(45, window_width / window_height, config['near_plane'], config['far_plane'])
-        window_width_px, window_height_px = glfw.get_framebuffer_size(window)
         hdrbuffer.delete()
-        hdrbuffer.create(window_width_px, window_height_px)
+        hdrbuffer.create(window_width, window_height)
         blurbuffer.delete()
-        blurbuffer.create(window_width_px, window_height_px)
+        blurbuffer.create(window_width, window_height)
 
 
 def key_callback(window, key, scancode, action, mods):
@@ -187,8 +188,8 @@ def key_callback(window, key, scancode, action, mods):
         glfw.set_window_should_close(window, glfw.TRUE)
     if key == glfw.KEY_G and action == glfw.PRESS:
         global cube
-        positions, colors = set_voxel_positions(vc)
-        cube.set_multiple_positions(positions, colors)
+        positions = set_voxel_positions(vc)
+        cube.set_multiple_positions(positions)
 
 
 def mouse_move(win, pos_x, pos_y):
@@ -215,8 +216,4 @@ def move_input(win, time):
 
 
 if __name__ == '__main__':
-    # set the start method
-    mp.set_start_method('spawn')
-
-    vc = VoxelReconstructor(create_table=True)
     main()

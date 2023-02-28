@@ -35,12 +35,15 @@ class VoxelReconstructor():
 
     def next_frame(self):
         voxels = []
+        colors = []
 
         foregrounds = []
         for cam in self.cams:
             cam.next_frame()
             fg = cam.get_foreground()
             foregrounds.append(fg)
+        #     cv.imshow(f'fg cam{cam.idx}', fg)
+        # cv.waitKey(0)
         for x in range(self.RESOLUTION):
             print(x)
             for y in range(self.RESOLUTION):
@@ -48,9 +51,10 @@ class VoxelReconstructor():
                     if self.is_in_all_foregrounds((x, y, z), foregrounds):
                         # voxels.append([x, z, y])
                         voxels.append([x-(int(self.RESOLUTION)/2), -z+self.RESOLUTION, y-(int(self.RESOLUTION)/2)])
+                        colors.append([x/100, z/100, y/100])
                         # voxels.append([x-int(self.RESOLUTION / 2), z, y-int(self.RESOLUTION / 2)])
                         # Y is the UP DIRECTION
-        return voxels
+        return voxels, colors
 
     def is_in_all_foregrounds(self, coords, foregrounds):
         x, y, z = coords

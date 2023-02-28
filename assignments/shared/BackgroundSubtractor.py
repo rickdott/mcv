@@ -21,8 +21,10 @@ class BackgroundSubtractor:
         # Remove detected shadows
         fg[fg == 127] = 0
 
-        # fg = cv.erode(fg, erosion_kernel, iterations=1)
-        # fg = cv.dilate(fg, erosion_kernel, iterations=1)
+        kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3))
+        # fg = cv.erode(fg, erosion_element, iterations=1)
+        # fg = cv.dilate(fg, erosion_element, iterations=1)
+        fg = cv.morphologyEx(fg, cv.MORPH_CLOSE, kernel, iterations=1)
         contours, hierarchy = cv.findContours(fg, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
         biggest_contour = max(contours, key=cv.contourArea)
 

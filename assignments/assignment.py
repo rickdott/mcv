@@ -12,21 +12,18 @@ block_size = 1.0
 def generate_grid(width, depth):
     # Generates the floor grid locations
     # You don't need to edit this function
-    data = []
+    data, colors = [], []
     for x in range(width):
         for z in range(depth):
             data.append([x*block_size - width/2, -block_size, z*block_size - depth/2])
-    return data
-
+            colors.append([1.0, 1.0, 1.0] if (x+z) % 2 == 0 else [0, 0, 0])
+    return data, colors
 
 def set_voxel_positions(vc):
     # Generates random voxel locations
     # TODO: You need to calculate proper voxel arrays instead of random ones.
-    data = vc.next_frame()
-    return data
-
-
-
+    data, colors = vc.next_frame()
+    return data, colors
 
 def get_cam_positions(vc):
     # Generates dummy camera locations at the 4 corners of the room
@@ -45,7 +42,7 @@ def get_cam_positions(vc):
         # Divide by 115 to get cameras closer
         # TODO: Find better number after voxels show up
         positions.append(pos/20)
-    return positions
+    return positions, [[1.0, 0, 0], [0, 1.0, 0], [0, 0, 1.0], [1.0, 1.0, 0]]
 
 
 def get_cam_rotation_matrices(vc):

@@ -44,7 +44,7 @@ def get_cam_positions(vc):
         pos[1] = abs(pos[1])
         # Divide by 115 to get cameras closer
         # TODO: Find better number after voxels show up
-        positions.append(pos/115)
+        positions.append(pos/20)
     return positions
 
 

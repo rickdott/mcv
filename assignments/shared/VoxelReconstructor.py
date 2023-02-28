@@ -2,11 +2,10 @@ import numpy as np, cv2 as cv
 from shared.VoxelCam import VoxelCam, TABLE_SIZE, BASE_PATH
 import multiprocessing as mp
 import os
-import math
 
 class VoxelReconstructor():
 
-    RESOLUTION = 200
+    RESOLUTION = 100
 
     def __init__(self, create_table=False):
         # Create VoxelCam instances and pre-load their pickle-able information sets
@@ -48,7 +47,7 @@ class VoxelReconstructor():
                 for z in range(self.RESOLUTION):
                     if self.is_in_all_foregrounds((x, y, z), foregrounds):
                         # voxels.append([x, z, y])
-                        voxels.append([x-int(self.RESOLUTION)/2, -z+self.RESOLUTION, y-int(self.RESOLUTION)/2])
+                        voxels.append([x-(int(self.RESOLUTION)/2), -z+self.RESOLUTION, y-(int(self.RESOLUTION)/2)])
                         # voxels.append([x-int(self.RESOLUTION / 2), z, y-int(self.RESOLUTION / 2)])
                         # Y is the UP DIRECTION
         return voxels
@@ -82,7 +81,7 @@ def calc_table(cam):
     print(f'{cam["idx"]} Calculating table')
     # Create grid of all possible index combinations
     # One block/one step is 115mm, local resolution since this function is parallelized
-    steps = 200
+    steps = 100
     steps_c = complex(steps)
     # grid = np.float32(np.mgrid[-TABLE_SIZE[0]:TABLE_SIZE[0]:steps, -TABLE_SIZE[1]:TABLE_SIZE[1]:steps, -TABLE_SIZE[2]*2:0:steps])
     grid = np.float32(np.mgrid[-400:1100:steps_c, -750:750:steps_c, -1500:0:steps_c])

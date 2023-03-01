@@ -1,13 +1,8 @@
 import glm
-import random
 import numpy as np
-
-from shared.VoxelReconstructor import VoxelReconstructor
 import cv2 as cv
-import multiprocessing as mp
 
 block_size = 1.0
-
 
 def generate_grid(width, depth):
     # Generates the floor grid locations
@@ -20,14 +15,12 @@ def generate_grid(width, depth):
     return data, colors
 
 def set_voxel_positions(vc):
-    # Generates random voxel locations
-    # TODO: You need to calculate proper voxel arrays instead of random ones.
+    # Gets voxel locations from voxel reconstructor
     data, colors = vc.next_frame()
     return data, colors
 
 def get_cam_positions(vc):
-    # Generates dummy camera locations at the 4 corners of the room
-    # TODO: You need to input the estimated locations of the 4 cameras in the world coordinates.
+    # Determines camera positions from voxel reconstructors rvec/tvec values
     positions = []
     for cam in vc.cams:
         # Calculate rotation matrix and determine position
@@ -46,8 +39,7 @@ def get_cam_positions(vc):
 
 
 def get_cam_rotation_matrices(vc):
-    # Generates dummy camera rotation matrices, looking down 45 degrees towards the center of the room
-    # TODO: You need to input the estimated camera rotation matrices (4x4) of the 4 cameras in the world coordinates.
+    # Calculate correct camera rotations based on rotation matrix
     rotations = []
     for cam in vc.cams:
         I = np.identity(4)

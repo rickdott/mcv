@@ -215,7 +215,7 @@ def move_input(win, time):
 
 
 if __name__ == '__main__':
-    # set the start method
+    # Set multiprocessing start method (for windows machines)
     mp.set_start_method('spawn')
 
     vc = VoxelReconstructor(create_table=True)

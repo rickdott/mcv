@@ -1,13 +1,13 @@
 from shared.BackgroundSubtractor import BackgroundSubtractor
 import os, numpy as np, cv2 as cv
 
-# So it runs when running from mcv folder and assignments folder
+# So it runs when running from mcv folder and assignments folder (during visualization)
 if os.getcwd().endswith('assignments'):
     BASE_PATH = os.path.join('data')
 else:
     BASE_PATH = os.path.join('assignments', 'data')
 
-
+# VoxelCam class handles the cams and their videos, configuration, and calibration files
 class VoxelCam():
 
     def __init__(self, idx):
@@ -20,19 +20,22 @@ class VoxelCam():
         self.subtractor = BackgroundSubtractor(background_path)
         self.fg = None
 
+        self.video = cv.VideoCapture(video_path)
         with np.load(config_path) as calibration:
             self.mtx = calibration['mtx']
             self.dist = calibration['dist']
             self.rvec = calibration['rvec']
             self.tvec = calibration['tvec']
 
-        self.video = cv.VideoCapture(video_path)
-    
     # Advance the video of this cam by one frame and return it
     def next_frame(self):
         if self.video.isOpened():
             ret, self.frame = self.video.read()
-            self.fg = self.subtractor.get_foreground(self.frame) if self.fg is None else cv.bitwise_xor(self.fg, self.subtractor.get_foreground(self.frame))
+            if ret:
+                # Get foreground for new frame and create a bitwise XOR representation between it and the previous foreground
+                fg_tmp = self.subtractor.get_foreground(self.frame)
+                self.xor = fg_tmp if self.fg is None else cv.bitwise_xor(fg_tmp, self.fg)
+                self.fg = fg_tmp
             return ret
     
     # Since objects like cv.VideoCapture and BackgroundSubtractorKNN are not pickle-able,

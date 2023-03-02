@@ -1,7 +1,7 @@
 from shared.Calibrator import Calibrator
 import os
 import numpy as np
-from shared.VoxelCam import BASE_PATH, VoxelCam, TABLE_SIZE
+from shared.VoxelCam import BASE_PATH, VoxelCam
 import cv2 as cv
 import glm
 from shared.VoxelReconstructor import RESOLUTION
@@ -13,36 +13,33 @@ for cam in range(1, 5):
 #     # calibrator.calibrate(False, False, savename=intrinsics_path)
 #     # print(calibrator.ret)
 #     # print(calibrator.mtx)
-    # config_path = os.path.join('assignments', 'data', f'cam{cam}', 'config.npz')
-    # with np.load(os.path.join(config_path)) as calibration:
-    #     ret = calibration['ret']
-    #     mtx = calibration['mtx']
-    #     dist = calibration['dist']
-    #     rvecs = calibration['rvecs']
-    #     tvecs = calibration['tvecs']
-    #     rvec = calibration['rvec']
-    #     tvec = calibration['tvec']
+    config_path = os.path.join('assignments', 'data', f'cam{cam}', 'config.npz')
+    with np.load(os.path.join(config_path)) as calibration:
+        ret = calibration['ret']
+        mtx = calibration['mtx']
+        dist = calibration['dist']
+        rvecs = calibration['rvecs']
+        tvecs = calibration['tvecs']
+        rvec = calibration['rvec']
+        tvec = calibration['tvec']
     # # print(f'Cam{cam}')
     # # print(mtx)
     # # print(rvec.T * tvec)
-    # rmtx = cv.Rodrigues(rvec)[0]
+    rmtx = cv.Rodrigues(rvec)[0]
     # pos = -rmtx.T * np.matrix(tvec)
     # # print(pos)
-    # I = np.identity(4)
-    # I[0:3,0:3] = rmtx
+    print(f'Cam {cam} rotation matrix')
+    print(rmtx)
+    print(f'Cam {cam} translation vector')
+    print(tvec)
     # glm_m = glm.mat4(I)
     # rot_m = glm.rotate(glm_m, glm.radians(90), (0, 1, 0))
     # print(rot_m)
     # loc = rmtx.T * tvec
-    with np.load(os.path.join(os.path.join('assignments', 'data', f'cam{cam}', 'table.npz'))) as tbl:
-        table = tbl['table']
+    # with np.load(os.path.join(os.path.join('assignments', 'data', f'cam{cam}', 'table.npz'))) as tbl:
+    #     table = tbl['table']
 
-    table_d = defaultdict(list)
-    for x in range(RESOLUTION):
-        for y in range(RESOLUTION):
-            for z in range(RESOLUTION):
-                table_d[tuple(table[x,y,z,:])].append((x,y,z))
-    print(table_d)
+    # print(list(set([1, 2, 3]) & set([3, 4, 5])))
     # table_d = {i:np.where(table==i)[0] for i in table}
 
 #     # grid = np.float32(np.mgrid[-TABLE_SIZE[0]:TABLE_SIZE[0], -TABLE_SIZE[1]:TABLE_SIZE[1], 0:TABLE_SIZE[2]])

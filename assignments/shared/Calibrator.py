@@ -101,9 +101,10 @@ class Calibrator:
                     corners.extend(self.interpolate(left, right, self.board_size[0]))
 
                 corners = np.expand_dims(np.array(corners, dtype=np.float32), 1)
+                
                 # Before inversely transforming the corners back to original 2d space, find better locations using subpixels
-                win_size = (4, 4) if self.intrinsics_path is not None else (11, 11)
-                # corners_subpix = cv.cornerSubPix(warped_gray, corners, win_size, (-1, -1), self.CRITERIA)
+                if self.intrinsics_path is None:
+                    corners = cv.cornerSubPix(warped_gray, corners, (11, 11), (-1, -1), self.CRITERIA)
 
                 # Inverse perspective transformation
                 _, IM = cv.invert(M)

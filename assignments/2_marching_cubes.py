@@ -37,26 +37,25 @@ if __name__ == '__main__':
     mp.set_start_method('spawn')
     vr = VoxelReconstructor(create_table=True)
 
-    # Get voxels belonging to the next frame
+    # Get voxels belonging to the first frame
     fr = vr.next_frame()[0]
     arr = np.zeros((RESOLUTION, RESOLUTION, RESOLUTION))
 
-    # Offsets assuming a resolution of 50
+    # Offsets assuming a resolution of 50, recommend changing VoxelReconstructor.RESOLUTION to 50 before running
+    # higher values are not performant
     for pos in fr:
         arr[int(pos[0] + 20), int(pos[2] + 15),  int(pos[1])] = 1
 
     # Use marching cubes to obtain the surface mesh of these ellipsoids
     verts, faces, normals, values = measure.marching_cubes(arr, 0)
 
-    # Display resulting triangular mesh using Matplotlib. This can also be done
-    # with mayavi (see skimage.measure.marching_cubes docstring).
+    # Display resulting triangular mesh using Matplotlib
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111, projection='3d')
 
     # Fancy indexing: `verts[faces]` to generate a collection of triangles
     mesh = Poly3DCollection(verts[faces])
     mesh.set_edgecolor('k')
-    # mesh.set_facecolor('darkblue')
     ax.add_collection3d(mesh)
 
     ax.set_xlabel("x-axis")
@@ -65,7 +64,7 @@ if __name__ == '__main__':
 
     ax.set_xlim(0, 40)
     ax.set_ylim(0, 40)
-    ax.set_zlim(0, 50)
+    ax.set_zlim(0, 45)
 
     plt.tight_layout()
     plt.show()

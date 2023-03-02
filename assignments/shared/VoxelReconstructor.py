@@ -3,16 +3,23 @@ from shared.VoxelCam import VoxelCam, BASE_PATH
 import multiprocessing as mp
 import os
 from collections import defaultdict
-from itertools import permutations
 
+# Resolution to use when generating the voxel model
 RESOLUTION = 100
 
+# The VoxelReconstruct class handles calculating  the lookup tables for individual VoxelCams
+# and gathering the voxel, color combinations for the next frame.
 class VoxelReconstructor():
 
     def __init__(self, create_table=False):
         # Create VoxelCam instances and pre-load their pickle-able information sets
         self.cams = []
         self.cam_infos = []
+
+        # (X, Y, Z) -> count, color dicts
+        self.voxels = defaultdict(lambda: 0)
+        self.colors = defaultdict(lambda: [])
+
         for cam in range(1, 5):
             vcam = VoxelCam(cam)
             self.cams.append(vcam)
@@ -26,6 +33,7 @@ class VoxelReconstructor():
             for result in results:
                 self.cams[result[0] - 1].table = result[1]
 
+            # Save tables to disk
             for idx, cam in enumerate(self.cams):
                 table_path = os.path.join(BASE_PATH, f'cam{idx + 1}', 'table.npz')
                 np.savez(table_path, table=cam.table)
@@ -35,68 +43,47 @@ class VoxelReconstructor():
                 with np.load(table_path, allow_pickle=True) as f_table:
                     cam.table = f_table['table']
 
+    # Selects the changed voxels + colors for the next frame
     def next_frame(self):
-        voxels = []
-        colors = []
+        next_voxels = []
+        next_colors = []
 
-        voxels_tmp = []
-        # TODO: Look into saving voxels for each frame, then handling only changed voxels, how to do colors?
+        # For every cam/view, advance it one frame and receive the changed pixels
         for cam in self.cams:
-            cam.next_frame()
-            # For white pixels in cam.fg
-            fg = cam.fg.nonzero()
-            voxels_tmp.append([])
-            for pix_x, pix_y in zip(fg[0], fg[1]):
-                voxels_tmp[cam.idx - 1].extend(cam.table[(pix_y, pix_x)])
-        
-        voxels = set.intersection(*map(set,voxels_tmp))
+            ret = cam.next_frame()
+            if not ret: return
+            changed = cam.xor.nonzero()
+            print(f'{cam.idx} Changed pixels: {len(changed[0])}')
 
+            # For every changed foreground pixel, increment its connected voxels' voxel counters by one
+            # also add the color of the foreground pixel for the current camera
+            for pix_y, pix_x in zip(changed[0], changed[1]):
+                coord = (pix_x, pix_y)
+                for voxel in cam.table[coord]:
+                    self.voxels[voxel] += 1
+                    self.colors[voxel].append(cam.frame[pix_y, pix_x])
 
-        pass
+        # For all the voxel, color combinations, add those that occurred in all cameras
+        for voxel, count in self.voxels.items():
+            if count == len(self.cams):
+                # Add voxel including offsetting due to calibration and to place it in the middle of the plane
+                next_voxels.append([voxel[0]-(int(RESOLUTION)/2), -voxel[2]+RESOLUTION, voxel[1]-(int(RESOLUTION)/2)])
 
-        # foregrounds = []
-        # for cam in self.cams:
-        #     cam.next_frame()
-        #     fg = cam.get_foreground()
-        #     foregrounds.append(fg)
-        #     pass
-        #     # cv.imshow(f'fg cam{cam.idx}', fg)
-        #     # cv.imshow(f'img cam{cam.idx}', cam.frame)
-        # # cv.waitKey(0)
-        # # TODO: Instead of looping through all voxels, loop through pixels in foregrounds
-        # for x in range(RESOLUTION):
-        #     print(x)
-        #     for y in range(RESOLUTION):
-        #         for z in range(RESOLUTION):
-        #             ret, voxel, color = self.is_in_all_foregrounds((x, y, z), foregrounds)
-        #             if ret:
-        #                 voxels.append(voxel)
-        #                 colors.append(color)
+                # Divide by 100 to get color in [0, 1] interval
+                color = np.mean(np.array(self.colors[voxel]), axis=0) / 100
 
-        return voxels, colors
+                # BGR to RGB (for OpenGL)
+                color[[0, 2]] = color[[2, 0]]
+                
+                next_colors.append(color)
+            else:
+                # Reset voxels and colors that did not change
+                self.voxels[voxel] = 0
+                self.colors[voxel] = []
 
-    def is_in_all_foregrounds(self, coords, foregrounds):
-        x, y, z = coords
-        color = np.zeros((0, 3))
-        for cam, fg in zip(self.cams, foregrounds):
-            x_y = cam.table[x, y, z, :]
-            coord_x, coord_y = tuple(x_y)
-            if coord_x >= fg.shape[1] or coord_y >= fg.shape[0] or coord_x < 0 or coord_y < 0 or fg[coord_y, coord_x] == 0:
-                return False, None, None
-            color = np.vstack([color, (cam.frame[coord_y, coord_x])])
+        return next_voxels, next_colors
 
-        # Determine voxel positon, added some shifting to ensure placement in the middle of the plane, and facing up.
-        voxel = [x-(int(RESOLUTION)/2), -z+RESOLUTION, y-(int(RESOLUTION)/2)]
-
-        # Color in [0,1.0] interval
-        color = np.mean(color, axis=0) / 100
-
-        # BGR to RGB for OpenGL
-        color[[0, 2]] = color[[2, 0]]
-
-        return True, voxel, color
-
-# Create 3d to 2d lookup table
+# Create (X, Y) -> [(X, Y, Z), ...] dictionary
 # use cv.projectPoints to project all points in needed (X, Y, Z) space to (X, Y) space for each camera
 def calc_table(cam):
     print(f'{cam["idx"]} Calculating table')

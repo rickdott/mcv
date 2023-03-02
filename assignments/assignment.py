@@ -32,9 +32,8 @@ def get_cam_positions(vc):
 
         # Take absolute of height variable (calibration had -z as positive height)
         pos[1] = abs(pos[1])
-        # Divide by 115 to get cameras closer
-        # TODO: Find better number after voxels show up
-        positions.append(pos/20)
+        # Divide by 10 to get camera at correct position (given resolution=100)
+        positions.append(pos/10)
     return positions, [[1.0, 0, 0], [0, 1.0, 0], [0, 0, 1.0], [1.0, 1.0, 0]]
 
 
@@ -47,6 +46,8 @@ def get_cam_rotation_matrices(vc):
         I[0:3,0:3] = rmtx
         
         glm_mat = glm.mat4(I)
+        
+        # Rotate 2nd and 3rd dimensions by 90 degrees
         glm_mat = glm.rotate(glm_mat, glm.radians(90), (0, 1, 1))
         rotations.append(glm_mat)
     return rotations

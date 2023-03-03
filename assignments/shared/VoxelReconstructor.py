@@ -24,6 +24,8 @@ class VoxelReconstructor():
             vcam = VoxelCam(cam)
             self.cams.append(vcam)
             self.cam_infos.append(vcam.get_info())
+        
+        self.cam_amount = len(self.cams)
 
         if create_table:
             # Parallelized calculation of lookup table
@@ -65,7 +67,7 @@ class VoxelReconstructor():
 
         # For all the voxel, color combinations, add those that occurred in all cameras
         for voxel, count in self.voxels.items():
-            if count == len(self.cams):
+            if count == self.cam_amount:
                 # Add voxel including offsetting due to calibration and to place it in the middle of the plane
                 next_voxels.append([voxel[0]-(int(RESOLUTION)/2), -voxel[2]+RESOLUTION, voxel[1]-(int(RESOLUTION)/2)])
 

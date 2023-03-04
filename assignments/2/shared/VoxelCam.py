@@ -1,11 +1,7 @@
 from shared.BackgroundSubtractor import BackgroundSubtractor
 import os, numpy as np, cv2 as cv
 
-# So it runs when running from mcv folder and assignments folder (during visualization)
-# if os.getcwd().endswith('assignments'):
 BASE_PATH = os.path.join('data')
-# else:
-# BASE_PATH = os.path.join('assignments', 'data')
 
 # VoxelCam class handles the cams and their videos, configuration, and calibration files
 class VoxelCam():

@@ -53,7 +53,8 @@ class VoxelReconstructor():
         # For every cam/view, advance it one frame and receive the changed pixels
         for cam in self.cams:
             ret = cam.next_frame()
-            if not ret: return
+            if not ret:
+                return
             changed = cam.xor.nonzero()
             print(f'{cam.idx} Changed pixels: {len(changed[0])}')
 

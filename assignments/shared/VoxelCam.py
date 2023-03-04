@@ -36,7 +36,14 @@ class VoxelCam():
                 fg_tmp = self.subtractor.get_foreground(self.frame)
                 self.xor = fg_tmp if self.fg is None else cv.bitwise_xor(fg_tmp, self.fg)
                 self.fg = fg_tmp
-            return ret
+                return ret
+            else:
+                # Reset video to first frame, looping
+                _ = self.video.set(cv.CAP_PROP_POS_FRAMES, 0)
+                self.next_frame()
+        else:
+            return False
+
     
     # Since objects like cv.VideoCapture and BackgroundSubtractorKNN are not pickle-able,
     # create subset of info needed for creating the lookup table and return it

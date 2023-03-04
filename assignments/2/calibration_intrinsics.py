@@ -5,7 +5,7 @@ from shared.Calibrator import Calibrator
 
 # Obtain intrinsic camera parameters
 for cam in range(1, 5):
-    intrinsics_path = os.path.join('assignments', 'data', f'cam{cam}', 'intrinsics.avi')
+    intrinsics_path = os.path.join('data', f'cam{cam}', 'intrinsics.avi')
     vid = cv.VideoCapture(intrinsics_path)
 
     frames = []
@@ -25,5 +25,5 @@ for cam in range(1, 5):
     
     # Board and cell size adapted from checkerboard.xml
     calibrator = Calibrator(frames=frames, board_size=(8, 6), cell_size=115)
-    calibrator.calibrate(recalibrate=True, save=True, savename=os.path.join('assignments', 'data', f'cam{cam}', 'intrinsics.npz'))
+    calibrator.calibrate(recalibrate=True, save=True, savename=os.path.join('data', f'cam{cam}', 'intrinsics.npz'))
     cv.waitKey(0)

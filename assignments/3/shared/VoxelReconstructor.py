@@ -5,7 +5,7 @@ import os
 from collections import defaultdict
 
 # Resolution to use when generating the voxel model
-RESOLUTION = 100
+RESOLUTION = 50
 
 # The VoxelReconstruct class handles calculating  the lookup tables for individual VoxelCams
 # and gathering the voxel, color combinations for the next frame.
@@ -56,6 +56,7 @@ class VoxelReconstructor():
             if not ret:
                 return
             changed = cam.xor.nonzero()
+            cv.imshow(f'{cam.idx} fg', cam.fg)
             print(f'{cam.idx} Changed pixels: {len(changed[0])}')
 
             # For every changed foreground pixel, increment its connected voxels' voxel counters by one
@@ -65,7 +66,7 @@ class VoxelReconstructor():
                 for voxel in cam.table[coord]:
                     self.voxels[voxel] += 1
                     self.colors[voxel].append(cam.frame[pix_y, pix_x])
-
+        cv.waitKey(0)
         # For all the voxel, color combinations, add those that occurred in all cameras
         for voxel, count in self.voxels.items():
             if count == self.cam_amount:

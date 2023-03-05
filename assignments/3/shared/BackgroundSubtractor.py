@@ -32,10 +32,13 @@ class BackgroundSubtractor:
 
         # Find the biggest contour in the image
         contours, hierarchy = cv.findContours(fg, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-        biggest_contour = max(contours, key=cv.contourArea)
+        biggest_contours = []
+        for contour in contours:
+            if cv.contourArea(contour) > 100:
+                biggest_contours.append(contour)
 
         # Draw filled version of biggest contour onto empty mask, resulting in final foreground
         mask = np.zeros(fg.shape, np.uint8)
-        cv.drawContours(mask, [biggest_contour], 0, 255, -1)
+        cv.drawContours(mask, biggest_contours, -1, 255, -1)
 
         return mask

@@ -5,12 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug 2 (extrinsics)",
+            "name": "Debug current file",
             "type": "python",
             "request": "launch",
-            "program": "assignments/2_voxel_reconstruction.py",
+            "program": "${file}",
             "console": "integratedTerminal",
-            "justMyCode": true
+            "justMyCode": true,
+            "cwd": "${fileDirname}"
         }
     ]
 }

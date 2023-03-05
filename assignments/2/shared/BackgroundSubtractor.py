@@ -12,15 +12,15 @@ class BackgroundSubtractor:
             ret, frame = vid.read()
             if ret:
                 # Learn from every frame
-                self.subtractor.apply(frame, learningRate=0.1)
+                self.subtractor.apply(frame, learningRate=0.5)
             else:
                 vid.release()
                 break
         pass
 
     def get_foreground(self, frame):
-        # Do not learn from actual video frames
-        fg = self.subtractor.apply(frame, 0)
+        # Do not learn as much from actual video frames
+        fg = self.subtractor.apply(frame, learningRate=0.00001)
 
         # Remove detected shadows
         fg[fg == 127] = 0

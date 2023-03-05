@@ -16,16 +16,16 @@ class VoxelReconstructor():
         self.cams = []
         self.cam_infos = []
 
-        # (X, Y, Z) -> count, color dicts
-        self.voxels = defaultdict(lambda: 0)
-        self.colors = defaultdict(lambda: [])
-
         for cam in range(1, 5):
             vcam = VoxelCam(cam)
             self.cams.append(vcam)
             self.cam_infos.append(vcam.get_info())
         
         self.cam_amount = len(self.cams)
+
+        # (X, Y, Z) -> count, color dicts
+        self.voxels = defaultdict(lambda: [False] * self.cam_amount)
+        self.colors = defaultdict(lambda: [[0, 0, 0]] * self.cam_amount)
 
         if create_table:
             # Parallelized calculation of lookup table
@@ -56,19 +56,23 @@ class VoxelReconstructor():
             if not ret:
                 return
             changed = cam.xor.nonzero()
+
             print(f'{cam.idx} Changed pixels: {len(changed[0])}')
 
-            # For every changed foreground pixel, increment its connected voxels' voxel counters by one
+            # For every changed foreground pixel, set it's show-value (True/False) for the cam it is shown on
             # also add the color of the foreground pixel for the current camera
             for pix_y, pix_x in zip(changed[0], changed[1]):
                 coord = (pix_x, pix_y)
                 for voxel in cam.table[coord]:
-                    self.voxels[voxel] += 1
-                    self.colors[voxel].append(cam.frame[pix_y, pix_x])
+                    # Set show-value of voxel based on foreground value of changed pixel
+                    self.voxels[voxel][cam.idx-1] = cam.fg[pix_y, pix_x] != 0
+
+                    if cam.fg[pix_y, pix_x] != 0:
+                        self.colors[voxel][cam.idx-1] = cam.frame[pix_y, pix_x]
 
         # For all the voxel, color combinations, add those that occurred in all cameras
-        for voxel, count in self.voxels.items():
-            if count == self.cam_amount:
+        for voxel, check in self.voxels.items():
+            if all(check):
                 # Add voxel including offsetting due to calibration and to place it in the middle of the plane
                 next_voxels.append([voxel[0]-(int(RESOLUTION)/2), -voxel[2]+RESOLUTION, voxel[1]-(int(RESOLUTION)/2)])
 
@@ -79,10 +83,6 @@ class VoxelReconstructor():
                 color[[0, 2]] = color[[2, 0]]
                 
                 next_colors.append(color)
-            else:
-                # Reset voxels and colors that did not change
-                self.voxels[voxel] = 0
-                self.colors[voxel] = []
 
         return next_voxels, next_colors
 

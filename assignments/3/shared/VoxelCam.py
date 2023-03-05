@@ -30,7 +30,7 @@ class VoxelCam():
             if ret:
                 # Get foreground for new frame and create a bitwise XOR representation between it and the previous foreground
                 fg_tmp = self.subtractor.get_foreground(self.frame)
-                self.xor = fg_tmp if self.fg is None else cv.bitwise_xor(fg_tmp, self.fg)
+                self.xor = fg_tmp if self.fg is None else cv.bitwise_xor(self.fg, fg_tmp)
                 self.fg = fg_tmp
                 return ret
             else:

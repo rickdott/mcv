@@ -137,6 +137,14 @@ class Calibrator:
         self.gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
         ret, corners = cv.findChessboardCorners(self.gray, self.board_size, None)
 
+        # Dont use reprojection error to recalibrate if intrinsics is given
+        if self.intrinsics_path is not None:
+            print(f'Did not find corners for frame: {index}')
+
+            cv.imshow('img', frame)
+            cv.setMouseCallback('img', self.click_event)
+            cv.waitKey(0)
+            return
         if ret:
             # Corners are found
             self.objpoints.append(self.objp)
@@ -147,17 +155,13 @@ class Calibrator:
             cv.imshow('img', frame)
             cv.waitKey(5)
         else:
-            # Corners not found, manually request corners
+        # Corners not found, manually request corners
             print(f'Did not find corners for frame: {index}')
 
             cv.imshow('img', frame)
             cv.setMouseCallback('img', self.click_event)
             cv.waitKey(0)
         
-        # Dont use reprojection error to recalibrate if intrinsics is given
-        if self.intrinsics_path is not None:
-            return
-
         # Calibrate camera and only use new image if projection error does not decrease by more than epsilon
         self.ret, self.mtx, self.dist, self.rvecs, self.tvecs = cv.calibrateCamera(self.objpoints, self.imgpoints, self.gray.shape[::-1], None, None)
         print(f"Re-projection error: {self.ret:.4}")

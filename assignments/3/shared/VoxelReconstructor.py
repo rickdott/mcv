@@ -16,16 +16,16 @@ class VoxelReconstructor():
         self.cams = []
         self.cam_infos = []
 
-        # (X, Y, Z) -> count, color dicts
-        self.voxels = defaultdict(lambda: 0)
-        self.colors = defaultdict(lambda: [])
-
         for cam in range(1, 5):
             vcam = VoxelCam(cam)
             self.cams.append(vcam)
             self.cam_infos.append(vcam.get_info())
         
         self.cam_amount = len(self.cams)
+
+        # (X, Y, Z) -> count, color dicts
+        self.voxels = defaultdict(lambda: [False] * self.cam_amount)
+        self.colors = defaultdict(lambda: [[0, 0, 0]] * self.cam_amount)
 
         if create_table:
             # Parallelized calculation of lookup table
@@ -56,7 +56,25 @@ class VoxelReconstructor():
             if not ret:
                 return
             changed = cam.xor.nonzero()
-            cv.imshow(f'{cam.idx} fg', cam.fg)
+            cv.imshow(f'{cam.idx} fg', cam.xor)
+            # for coord, voxels in cam.table.items():
+            #     for voxel in voxels:
+            #         if voxel[0] == 0 and voxel[2] == 0:
+            #             cv.circle(cam.frame, coord, 2, (0, 0, 255), thickness=cv.FILLED)
+            #         if voxel[0] == RESOLUTION-1 and voxel[2] == RESOLUTION-1:
+            #             cv.circle(cam.frame, coord, 2, (0, 255, 255), thickness=cv.FILLED)
+            #         if voxel[0] == 0 and voxel[2] == RESOLUTION-1:
+            #             cv.circle(cam.frame, coord, 2, (255, 255, 255), thickness=cv.FILLED)
+            #         if voxel[0] == RESOLUTION-1 and voxel[2] == 0:
+            #             cv.circle(cam.frame, coord, 2, (255, 0, 255), thickness=cv.FILLED)
+
+
+                # if (0, 0, 0) in voxels:
+                #     cv.circle(cam.frame, coord, 2, (0, 0, 255), thickness=cv.FILLED)
+                # if (RESOLUTION-1, RESOLUTION-1, RESOLUTION-1) in voxels:
+                #     cv.circle(cam.frame, coord, 2, (0, 255, 255), thickness=cv.FILLED)
+            # cv.imshow(f'{cam.idx} img', cam.frame)
+
             print(f'{cam.idx} Changed pixels: {len(changed[0])}')
 
             # For every changed foreground pixel, increment its connected voxels' voxel counters by one
@@ -64,12 +82,15 @@ class VoxelReconstructor():
             for pix_y, pix_x in zip(changed[0], changed[1]):
                 coord = (pix_x, pix_y)
                 for voxel in cam.table[coord]:
-                    self.voxels[voxel] += 1
-                    self.colors[voxel].append(cam.frame[pix_y, pix_x])
-        cv.waitKey(0)
+                    # If voxel was shown in previous frame, should be visible in all 4 views this time
+                    self.voxels[voxel][cam.idx-1] = cam.fg[pix_y, pix_x] != 0
+                    if cam.fg[pix_y, pix_x] != 0:
+                        self.colors[voxel][cam.idx-1] = cam.frame[pix_y, pix_x]
+
+        # cv.waitKey(0)
         # For all the voxel, color combinations, add those that occurred in all cameras
-        for voxel, count in self.voxels.items():
-            if count == self.cam_amount:
+        for voxel, check in self.voxels.items():
+            if all(check):
                 # Add voxel including offsetting due to calibration and to place it in the middle of the plane
                 next_voxels.append([voxel[0]-(int(RESOLUTION)/2), -voxel[2]+RESOLUTION, voxel[1]-(int(RESOLUTION)/2)])
 
@@ -80,10 +101,6 @@ class VoxelReconstructor():
                 color[[0, 2]] = color[[2, 0]]
                 
                 next_colors.append(color)
-            else:
-                # Reset voxels and colors that did not change
-                self.voxels[voxel] = 0
-                self.colors[voxel] = []
 
         return next_voxels, next_colors
 
@@ -93,7 +110,7 @@ def calc_table(cam):
     print(f'{cam["idx"]} Calculating table')
     steps_c = complex(RESOLUTION)
     # Create evenly spaced grid centered around the subject, using n = RESOLUTION steps.
-    grid = np.float32(np.mgrid[-400:1100:steps_c, -750:750:steps_c, -1500:0:steps_c])
+    grid = np.float32(np.mgrid[-700:2500:steps_c, -3500:1500:steps_c, -2000:0:steps_c])
     grid_t = grid.T.reshape(-1, 3)
 
     print(f'{cam["idx"]} Projecting points')

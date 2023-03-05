@@ -12,15 +12,15 @@ class BackgroundSubtractor:
             ret, frame = vid.read()
             if ret:
                 # Learn from every frame
-                self.subtractor.apply(frame, learningRate=0.1)
+                self.subtractor.apply(frame, learningRate=0.5)
             else:
                 vid.release()
                 break
         pass
 
     def get_foreground(self, frame):
-        # Do not learn from actual video frames
-        fg = self.subtractor.apply(frame, 0)
+        # Do not learn as much from actual video frames
+        fg = self.subtractor.apply(frame, learningRate=0.00001)
 
         # Remove detected shadows
         fg[fg == 127] = 0
@@ -34,7 +34,7 @@ class BackgroundSubtractor:
         contours, hierarchy = cv.findContours(fg, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
         biggest_contours = []
         for contour in contours:
-            if cv.contourArea(contour) > 100:
+            if cv.contourArea(contour) > 1000:
                 biggest_contours.append(contour)
 
         # Draw filled version of biggest contour onto empty mask, resulting in final foreground

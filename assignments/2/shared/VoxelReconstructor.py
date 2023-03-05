@@ -5,7 +5,7 @@ import os
 from collections import defaultdict
 
 # Resolution to use when generating the voxel model
-RESOLUTION = 100
+RESOLUTION = 50
 
 # The VoxelReconstruct class handles calculating  the lookup tables for individual VoxelCams
 # and gathering the voxel, color combinations for the next frame.

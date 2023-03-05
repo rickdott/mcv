@@ -61,7 +61,7 @@ if __name__ == '__main__':
     ax.set_xlabel("x-axis")
     ax.set_ylabel("y-axis")
     ax.set_zlabel("z-axis")
-
+    ax.set_aspect('equal')
     ax.set_xlim(0, 40)
     ax.set_ylim(0, 40)
     ax.set_zlim(0, 45)

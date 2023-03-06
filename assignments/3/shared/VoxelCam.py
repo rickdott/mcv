@@ -8,10 +8,10 @@ class VoxelCam():
 
     def __init__(self, idx):
         self.idx = idx
-        cam_path = os.path.join(BASE_PATH, f'cam{idx}')
-        background_path = os.path.join(cam_path, 'background.avi')
-        video_path = os.path.join(cam_path, 'video.avi')
-        config_path = os.path.join(cam_path, 'config.npz')
+        self.cam_path = os.path.join(BASE_PATH, f'cam{idx}')
+        background_path = os.path.join(self.cam_path, 'background.avi')
+        video_path = os.path.join(self.cam_path, 'video.avi')
+        config_path = os.path.join(self.cam_path, 'config.npz')
 
         self.subtractor = BackgroundSubtractor(background_path)
         self.fg = None

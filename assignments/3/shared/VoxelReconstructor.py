@@ -1,4 +1,5 @@
 import numpy as np, cv2 as cv
+from shared.ColorModel import ColorModel
 from shared.VoxelCam import VoxelCam, BASE_PATH
 import multiprocessing as mp
 import os
@@ -7,7 +8,7 @@ from collections import defaultdict
 # Resolution to use when generating the voxel model
 RESOLUTION = 50
 
-# The VoxelReconstruct class handles calculating  the lookup tables for individual VoxelCams
+# The VoxelReconstructor class handles calculating the lookup tables for individual VoxelCams
 # and gathering the voxel, color combinations for the next frame.
 class VoxelReconstructor():
 
@@ -33,17 +34,21 @@ class VoxelReconstructor():
                 results = p.map(calc_table, self.cam_infos)
             
             for result in results:
+                # Table of coordinates to voxels
                 self.cams[result[0] - 1].table = result[1]
+                # Table of voxel to coordinates
+                self.cams[result[0] - 1].table_r = result[2]
 
             # Save tables to disk
             for idx, cam in enumerate(self.cams):
                 table_path = os.path.join(BASE_PATH, f'cam{idx + 1}', 'table.npz')
-                np.savez(table_path, table=cam.table)
+                np.savez(table_path, table=cam.table, table_r=cam.table_r)
         else:
             for idx, cam in enumerate(self.cams):
                 table_path = os.path.join(BASE_PATH, f'cam{idx + 1}', 'table.npz')
                 with np.load(table_path, allow_pickle=True) as f_table:
                     cam.table = f_table['table']
+                    cam.table_r = f_table['table_r']
 
     # Selects the changed voxels + colors for the next frame
     def next_frame(self):
@@ -56,7 +61,7 @@ class VoxelReconstructor():
             if not ret:
                 return
             changed = cam.xor.nonzero()
-            cv.imshow(f'{cam.idx} fg', cam.xor)
+            # cv.imshow(f'{cam.idx} fg', cam.xor)
             # for coord, voxels in cam.table.items():
             #     for voxel in voxels:
             #         if voxel[0] == 0 and voxel[2] == 0:
@@ -102,6 +107,9 @@ class VoxelReconstructor():
                 
                 next_colors.append(color)
 
+        # cm = ColorModel(cam, next_voxels)
+        # colors = ((cm.cluster(next_voxels) + 1) / 4).tolist()
+        # colors = [[color[0], 0, 0] for color in colors]
         return next_voxels, next_colors
 
     def specific_frame(self, frame_index):
@@ -134,4 +142,4 @@ def calc_table(cam):
                 table_d[tuple(table[x,y,z,:])].append((x,y,z))
 
     print(f'{cam["idx"]} Wrapping up')
-    return (cam['idx'], table_d)
+    return (cam['idx'], table_d, table)

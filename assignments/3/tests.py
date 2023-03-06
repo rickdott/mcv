@@ -9,6 +9,8 @@ from collections import defaultdict
 
 print(all([True, True]))
 print([[0,0,0]]*4)
+for i in range(0, 4):
+    print(i)
 # calibrator = Calibrator('resources/img_*.png')
 # for cam in range(1, 5):
 # #     # intrinsics_path = os.path.join('assignments', 'data', f'cam{cam}', 'config.npz')

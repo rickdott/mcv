@@ -11,12 +11,12 @@ RESOLUTION = 50
 # and gathering the voxel, color combinations for the next frame.
 class VoxelReconstructor():
 
-    def __init__(self, create_table=False):
+    def __init__(self, create_table=False, cams=[1, 2, 3, 4]):
         # Create VoxelCam instances and pre-load their pickle-able information sets
         self.cams = []
         self.cam_infos = []
 
-        for cam in range(1, 5):
+        for cam in cams:
             vcam = VoxelCam(cam)
             self.cams.append(vcam)
             self.cam_infos.append(vcam.get_info())
@@ -103,6 +103,12 @@ class VoxelReconstructor():
                 next_colors.append(color)
 
         return next_voxels, next_colors
+
+    def specific_frame(self, frame_index):
+        # For list of indices of length equal to amount of cameras, get frames for those videos
+        for cam in self.cams:
+            cam.video.set(cv.CAP_PROP_POS_FRAMES, frame_index)
+        return self.next_frame()
 
 # Create (X, Y) -> [(X, Y, Z), ...] dictionary
 # use cv.projectPoints to project all points in needed (X, Y, Z) space to (X, Y) space for each camera

@@ -16,11 +16,13 @@ class VoxelReconstructor():
         # Create VoxelCam instances and pre-load their pickle-able information sets
         self.cams = []
         self.cam_infos = []
+        self.color_models = []
 
         for cam in cams:
             vcam = VoxelCam(cam)
             self.cams.append(vcam)
             self.cam_infos.append(vcam.get_info())
+            self.color_models.append(ColorModel(vcam))
         
         self.cam_amount = len(self.cams)
 
@@ -47,12 +49,13 @@ class VoxelReconstructor():
             for idx, cam in enumerate(self.cams):
                 table_path = os.path.join(BASE_PATH, f'cam{idx + 1}', 'table.npz')
                 with np.load(table_path, allow_pickle=True) as f_table:
-                    cam.table = f_table['table']
+                    cam.table = f_table['table'].item()
                     cam.table_r = f_table['table_r']
 
     # Selects the changed voxels + colors for the next frame
     def next_frame(self):
         next_voxels = []
+        orig_voxels = []
         next_colors = []
 
         # For every cam/view, advance it one frame and receive the changed pixels
@@ -98,6 +101,7 @@ class VoxelReconstructor():
             if all(check):
                 # Add voxel including offsetting due to calibration and to place it in the middle of the plane
                 next_voxels.append([voxel[0]-(int(RESOLUTION)/2), -voxel[2]+RESOLUTION, voxel[1]-(int(RESOLUTION)/2)])
+                orig_voxels.append(voxel)
 
                 # Divide by 100 to get color in [0, 1] interval
                 color = np.mean(np.array(self.colors[voxel]), axis=0) / 100
@@ -107,10 +111,11 @@ class VoxelReconstructor():
                 
                 next_colors.append(color)
 
-        # cm = ColorModel(cam, next_voxels)
+        for cam in self.cams:
+            person_color = self.color_models[cam.idx - 1].match_persons(orig_voxels)
         # colors = ((cm.cluster(next_voxels) + 1) / 4).tolist()
         # colors = [[color[0], 0, 0] for color in colors]
-        return next_voxels, next_colors
+        return next_voxels, next_colors, orig_voxels
 
     def specific_frame(self, frame_index):
         # For list of indices of length equal to amount of cameras, get frames for those videos

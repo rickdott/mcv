@@ -16,7 +16,7 @@ def generate_grid(width, depth):
 
 def set_voxel_positions(vc):
     # Gets voxel locations from voxel reconstructor
-    data, colors = vc.next_frame()
+    data, colors, _ = vc.next_frame()
     return data, colors
 
 def get_cam_positions(vc):

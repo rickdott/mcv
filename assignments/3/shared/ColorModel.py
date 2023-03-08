@@ -42,10 +42,8 @@ class ColorModel():
                 colors = np.vstack((colors, pixel_color))
             for person, model in self.models.items():
                 ret, preds = model.predict(colors)
-                print(f'Prediction for cam {self.cam.idx}, person {person}:')
-                print(np.sum(preds))
-        
-
+                print(f'Label: {label}, Cam {self.cam.idx}, Person {person}:')
+                print(np.sum(preds, 0))
 
     def create_models(self, voxels):
         # Cluster voxels

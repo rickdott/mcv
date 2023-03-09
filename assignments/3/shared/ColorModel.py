@@ -1,38 +1,49 @@
 import os
 import cv2 as cv, numpy as np
+from collections import defaultdict
+
+AMOUNT_OF_PEOPLE = 4
 
 class ColorModel():
     
-    AMOUNT_OF_PEOPLE = 4
-
     # Cam must always be provided
-    def __init__(self, cam, voxels=None):
+    def __init__(self, cam, voxels=None, mean_colors=None):
         # Cam must be at preferred frame position for modelling color
+        # label -> (model, predictions) dictionary
         self.models = {}
+
+        # label -> [color] dictionary for matching while creating color models
+        self.mean_colors = {} if mean_colors is None else mean_colors
         self.cam = cam
         if voxels is None:
             # Load color model from disk
-            for person in range(0, self.AMOUNT_OF_PEOPLE):
+            for person in range(0, AMOUNT_OF_PEOPLE):
                 path = os.path.join(self.cam.cam_path, f'colormodel_{person}.model')
-                self.models[person] = cv.ml.EM.load(path)
+                model = cv.ml.EM.load(path)
+                with np.load(os.path.join(self.cam.cam_path, f'colormodel_{person}_preds.npz')) as f:
+                    preds = f['preds']
+                self.models[person] = (model, preds)
             return
         
         # If voxels are provided (offline), create model given cam + voxels
         self.create_models(voxels)
 
-        # Group all coordinates belonging to cluster (person)
-        # Create color model (SD + mean or similar), two dicts again? 
 
-    def match_persons(self, voxels):
-        labels = np.ravel(self.cluster(voxels))
-        np_voxels = np.float32(voxels)
-
-        # For each label
-        for label in range(0, self.AMOUNT_OF_PEOPLE):
-            p_voxels = np.int_(np_voxels[labels == label])
+    def match_persons(self, voxels, labels):
+        voxels = np.float32(voxels)
+        labels = np.ravel(labels)
+        # label > person
+        label_map = defaultdict(lambda: 0)
+        
+        # For every person/cluster
+        for label in range(0, AMOUNT_OF_PEOPLE):
+            p_voxels = np.int_(voxels[labels == label])
             colors = np.empty((0, 3))
-            # Sample from voxels to check distance in models
-            sample = p_voxels[np.random.choice(p_voxels.shape[0], 100, replace=False)]
+
+            dists = defaultdict(lambda: 0)
+
+            # Sample from voxels to determine distance to models
+            sample = p_voxels[np.random.choice(p_voxels.shape[0], 100, replace=True)]
 
             # For each cluster (all labeled voxels)
             for v in sample:
@@ -40,47 +51,82 @@ class ColorModel():
                 pixel = self.cam.table_r[v[0], v[1], v[2], :]
                 pixel_color = self.cam.frame[pixel[1], pixel[0]]
                 colors = np.vstack((colors, pixel_color))
+            
+            # Compare colors in cluster to all models in current camera
             for person, model in self.models.items():
-                ret, preds = model.predict(colors)
-                print(f'Label: {label}, Cam {self.cam.idx}, Person {person}:')
-                print(np.sum(preds, 0))
+                _, new_preds = model[0].predict(colors)
+                mean_pred = np.mean(new_preds, axis=0)
+                # Compare mean prediction to mean prediction of color model, defined as the L2/Euclidean distance
+                dist = np.linalg.norm(mean_pred - model[1])
+                dists[person] += dist
+            # Here dists is what one cam thinks of all voxels
+            # Weight differently based on std?
+            person, dist = min(dists.items(), key=lambda x: x[1])
+            label_map[label] = (person, dist)
+
+        return dict(label_map)
+        # Should return label > person map
+        # Include person > color map
 
     def create_models(self, voxels):
-        # Cluster voxels
-        labels = np.ravel(self.cluster(voxels))
-        np_voxels = np.float32(voxels)
+        # Get voxels + labels that should be used for creating a color model (those above mean height)
+        voxels, labels = remove_pants(voxels, cluster(voxels))
+        labels = np.ravel(labels)
+        voxels = np.float32(voxels)
 
-        # Show image and wait for confirmation (keypress)
-        cv.imshow(f'{self.cam.idx} img', self.cam.frame)
-        cv.waitKey(0)
-
-        # For each label
-        for label in range(0, self.AMOUNT_OF_PEOPLE):
-            p_voxels = np.int_(np_voxels[labels == label])
-
-            model = cv.ml.EM_create()
-            model.setClustersNumber(3)
+        # For every person/cluster known
+        for label in range(0, AMOUNT_OF_PEOPLE):
+            p_voxels = np.int_(voxels[labels == label])
             colors = np.empty((0, 3))
 
-            # For each cluster (all labeled voxels)
+            # Create a model with 3 Gaussian clusters
+            model = cv.ml.EM_create()
+            model.setClustersNumber(3)
+            
+            # For each cluster (group of labelled voxels
             for v in p_voxels:
                 # Find coordinates belonging to voxel
                 pixel = self.cam.table_r[v[0], v[1], v[2], :]
                 pixel_color = self.cam.frame[pixel[1], pixel[0]]
                 colors = np.vstack((colors, pixel_color))
-            
             # Create model per person (cluster)
             model.trainEM(colors)
-            self.models[label] = model
 
-            # Save model to disk
-            path = os.path.join(self.cam.cam_path, f'colormodel_{label}.model')
-            model.save(path)
+            # Get probability distribution of person under model, in online phase the distribution closest to this one corresponds to the person
+            _, preds = model.predict(colors)
+            preds = np.mean(preds, axis=0)
 
-    def cluster(self, voxels):
-        criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+            # Use mean color to match model + label combinations to other cameras
+            mean_color = np.mean(colors, axis=0)
+            # Determine new label, this label should be the label that has the least L2/Euclidean distance to previous mean colors
+            if len(self.mean_colors) == AMOUNT_OF_PEOPLE:
+                new_label, _ = min(self.mean_colors.items(), key=lambda old_mean_color: np.linalg.norm(old_mean_color[1] - mean_color))
+            else:
+                new_label = label
 
-        # Convert to numpy array and drop height information
-        np_voxels = np.float32(voxels)[:,[0,2]]
-        _, labels, _ = cv.kmeans(np_voxels, self.AMOUNT_OF_PEOPLE, None, criteria, 10, cv.KMEANS_PP_CENTERS)
-        return labels
+            self.models[new_label] = (model, preds)
+            self.mean_colors[new_label] = mean_color
+
+            # Save model and preds to disk
+            model.save(os.path.join(self.cam.cam_path, f'colormodel_{new_label}.model'))
+            np.savez(os.path.join(self.cam.cam_path, f'colormodel_{new_label}_preds.npz'), preds=preds)
+
+def cluster(voxels):
+    # Cluster voxels in 3d space based on x/y information
+    criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 100, 0.1)
+
+    # Convert to numpy array and drop height information
+    np_voxels = np.float32(voxels)[:,[0,1]]
+
+    _, labels, _ = cv.kmeans(np_voxels, AMOUNT_OF_PEOPLE, None, criteria, 20, cv.KMEANS_RANDOM_CENTERS)
+    return labels
+
+def remove_pants(voxels, labels):
+    # From clustered voxels + labels, select only those voxels
+    # and labels that are below the belt
+    labels, voxels = np.array(labels), np.array(voxels)
+    mean_height = np.mean(voxels[:, 2], dtype=np.int_)
+
+    # Subset voxels based on mean height (reversed, so < means above)
+    expr = voxels[:, 2] < mean_height
+    return voxels[expr], labels[expr]

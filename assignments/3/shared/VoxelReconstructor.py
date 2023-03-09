@@ -1,9 +1,9 @@
 import numpy as np, cv2 as cv
-from shared.ColorModel import ColorModel
+from shared.ColorModel import ColorModel, cluster, remove_pants
 from shared.VoxelCam import VoxelCam, BASE_PATH
 import multiprocessing as mp
 import os
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 # Resolution to use when generating the voxel model
 RESOLUTION = 50
@@ -12,17 +12,20 @@ RESOLUTION = 50
 # and gathering the voxel, color combinations for the next frame.
 class VoxelReconstructor():
 
-    def __init__(self, create_table=False, cams=[1, 2, 3, 4]):
+    def __init__(self, create_table=False, cams=[1, 2, 3, 4], use_color_model=True):
         # Create VoxelCam instances and pre-load their pickle-able information sets
         self.cams = []
         self.cam_infos = []
+        self.use_color_model = use_color_model
         self.color_models = []
+        self.person_to_color = {0: np.array([1, 0, 0]), 1: np.array([0, 1, 0]), 2: np.array([0, 0, 1]), 3: np.array([1, 0, 1])}
 
         for cam in cams:
             vcam = VoxelCam(cam)
             self.cams.append(vcam)
             self.cam_infos.append(vcam.get_info())
-            self.color_models.append(ColorModel(vcam))
+            if self.use_color_model:
+                self.color_models.append(ColorModel(vcam))
         
         self.cam_amount = len(self.cams)
 
@@ -64,24 +67,6 @@ class VoxelReconstructor():
             if not ret:
                 return
             changed = cam.xor.nonzero()
-            # cv.imshow(f'{cam.idx} fg', cam.xor)
-            # for coord, voxels in cam.table.items():
-            #     for voxel in voxels:
-            #         if voxel[0] == 0 and voxel[2] == 0:
-            #             cv.circle(cam.frame, coord, 2, (0, 0, 255), thickness=cv.FILLED)
-            #         if voxel[0] == RESOLUTION-1 and voxel[2] == RESOLUTION-1:
-            #             cv.circle(cam.frame, coord, 2, (0, 255, 255), thickness=cv.FILLED)
-            #         if voxel[0] == 0 and voxel[2] == RESOLUTION-1:
-            #             cv.circle(cam.frame, coord, 2, (255, 255, 255), thickness=cv.FILLED)
-            #         if voxel[0] == RESOLUTION-1 and voxel[2] == 0:
-            #             cv.circle(cam.frame, coord, 2, (255, 0, 255), thickness=cv.FILLED)
-
-
-                # if (0, 0, 0) in voxels:
-                #     cv.circle(cam.frame, coord, 2, (0, 0, 255), thickness=cv.FILLED)
-                # if (RESOLUTION-1, RESOLUTION-1, RESOLUTION-1) in voxels:
-                #     cv.circle(cam.frame, coord, 2, (0, 255, 255), thickness=cv.FILLED)
-            # cv.imshow(f'{cam.idx} img', cam.frame)
 
             print(f'{cam.idx} Changed pixels: {len(changed[0])}')
 
@@ -95,7 +80,6 @@ class VoxelReconstructor():
                     if cam.fg[pix_y, pix_x] != 0:
                         self.colors[voxel][cam.idx-1] = cam.frame[pix_y, pix_x]
 
-        # cv.waitKey(0)
         # For all the voxel, color combinations, add those that occurred in all cameras
         for voxel, check in self.voxels.items():
             if all(check):
@@ -111,10 +95,47 @@ class VoxelReconstructor():
                 
                 next_colors.append(color)
 
-        for cam in self.cams:
-            person_color = self.color_models[cam.idx - 1].match_persons(orig_voxels)
-        # colors = ((cm.cluster(next_voxels) + 1) / 4).tolist()
-        # colors = [[color[0], 0, 0] for color in colors]
+        # If color model is used, cluster voxels of interest (above the waist) and compare to predictions of similarly defined color models
+        if self.use_color_model:
+            # Labels of all voxels
+            labels = cluster(orig_voxels)
+
+            # Voxels and labels needed for comparison
+            cluster_voxels, cluster_labels = remove_pants(orig_voxels, labels)
+            lp_sum = defaultdict(lambda: 0)
+            lp_counter = defaultdict(lambda: 0)
+            lp_mat = np.ones((4,4))
+
+            for cam in self.cams:
+                label_map = self.color_models[cam.idx - 1].match_persons(cluster_voxels, cluster_labels)
+                for label, info in label_map.items():
+                    lp_sum[(label, info[0])] += info[1]
+                    lp_counter[(label, info[0])] += 1
+
+            for mapping, cum_dist in lp_sum.items():
+                lp_mat[mapping[0], mapping[1]] = cum_dist / lp_counter[mapping]
+            
+            # Create dict person > label with lowest values
+            maxes = list(np.argmin(lp_mat, axis=1))
+            print(maxes)
+            # for lp, avg_dist in lp_sum.items():
+            #     if avg_dist < person_label[lp[1]][1]:
+            #         person_label[lp[1]] = (lp[0], avg_dist)
+            # for m, d in lp_sum.items():
+            #     for m2, d2 in lp_sum.items():
+            #         if m == m2: continue
+            #         if m[1] == m2[1] and d < d2:
+            #             label_person[m[0]] = m[1]
+                # if avg_dist < person_label[mapping[1]][1]:
+                #     person_label[mapping[1]] = (mapping[0], avg_dist)
+
+            # label_person = {lp[1][0]: lp[0] for lp in person_label.items()}
+            # print(person_label)
+            next_colors = [list((np.array(color) + self.person_to_color[maxes[label.item()]]) / 2) for color, label in zip(next_colors, labels)]
+            # next_colors = [list(self.person_to_color[person_label[label.item()]]) for label in labels]
+                    
+        # colors = ((labels + 1) / 4).tolist()
+        # next_colors = [[color, 0, 0] for color in colors]
         return next_voxels, next_colors, orig_voxels
 
     def specific_frame(self, frame_index):

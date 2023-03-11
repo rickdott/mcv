@@ -98,40 +98,32 @@ class VoxelReconstructor():
         # If color model is used, cluster voxels of interest (above the waist) and compare to predictions of similarly defined color models
         if self.use_color_model:
             # Labels of all voxels
-            labels = cluster(orig_voxels)
+
+            labels, centers = cluster(orig_voxels)
 
             # Voxels and labels needed for comparison
             cluster_voxels, cluster_labels = remove_pants(orig_voxels, labels)
-            lp_sum = defaultdict(lambda: 0)
-            lp_counter = defaultdict(lambda: 0)
-            lp_mat = np.ones((4,4))
+
+            # cam > label > person
+            lp_mat = np.ones((4,4,4))
 
             for cam in self.cams:
-                label_map = self.color_models[cam.idx - 1].match_persons(cluster_voxels, cluster_labels)
-                for label, info in label_map.items():
-                    lp_sum[(label, info[0])] += info[1]
-                    lp_counter[(label, info[0])] += 1
+                self.color_models[cam.idx - 1].match_persons(cluster_voxels, cluster_labels, lp_mat)
+            
+            # Variance for each row
+            stdev = lp_mat.std(axis=2, keepdims=True)
+            # Let cam choose with highest standard deviation
+            # Maybe where lowest is furthest from mean?
+            max_var = stdev.argmax(axis=0)
+            label_person = {}
+            for label in range(0,4):
+                label_person[label] = np.argmin(lp_mat[max_var[label], label, :])
 
-            for mapping, cum_dist in lp_sum.items():
-                lp_mat[mapping[0], mapping[1]] = cum_dist / lp_counter[mapping]
             
             # Create dict person > label with lowest values
-            maxes = list(np.argmin(lp_mat, axis=1))
-            print(maxes)
-            # for lp, avg_dist in lp_sum.items():
-            #     if avg_dist < person_label[lp[1]][1]:
-            #         person_label[lp[1]] = (lp[0], avg_dist)
-            # for m, d in lp_sum.items():
-            #     for m2, d2 in lp_sum.items():
-            #         if m == m2: continue
-            #         if m[1] == m2[1] and d < d2:
-            #             label_person[m[0]] = m[1]
-                # if avg_dist < person_label[mapping[1]][1]:
-                #     person_label[mapping[1]] = (mapping[0], avg_dist)
-
-            # label_person = {lp[1][0]: lp[0] for lp in person_label.items()}
-            # print(person_label)
-            next_colors = [list((np.array(color) + self.person_to_color[maxes[label.item()]]) / 2) for color, label in zip(next_colors, labels)]
+            # maxes = list(np.argmin(lp_mat, axis=0))
+            # print(maxes)
+            next_colors = [list((np.array(color) + self.person_to_color[label_person[label.item()]]) / 2) for color, label in zip(next_colors, labels)]
             # next_colors = [list(self.person_to_color[person_label[label.item()]]) for label in labels]
                     
         # colors = ((labels + 1) / 4).tolist()

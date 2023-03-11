@@ -29,11 +29,9 @@ class ColorModel():
         self.create_models(voxels)
 
 
-    def match_persons(self, voxels, labels):
+    def match_persons(self, voxels, labels, probs):
         voxels = np.float32(voxels)
         labels = np.ravel(labels)
-        # label > person
-        label_map = defaultdict(lambda: 0)
         
         # For every person/cluster
         for label in range(0, AMOUNT_OF_PEOPLE):
@@ -55,24 +53,32 @@ class ColorModel():
             # Compare colors in cluster to all models in current camera
             for person, model in self.models.items():
                 _, new_preds = model[0].predict(colors)
+
+
                 mean_pred = np.mean(new_preds, axis=0)
                 # Compare mean prediction to mean prediction of color model, defined as the L2/Euclidean distance
                 dist = np.linalg.norm(mean_pred - model[1])
-                dists[person] += dist
+                dists[person] = dist
             # Here dists is what one cam thinks of all voxels
             # Weight differently based on std?
-            person, dist = min(dists.items(), key=lambda x: x[1])
-            label_map[label] = (person, dist)
-
-        return dict(label_map)
+            # person, dist = min(dists.items(), key=lambda x: x[1])
+            # probs[self.cam.idx-1, label, person] = dist
+            # If person is already identified with a higher value
+            # if np.min(probs[self.cam.idx-1, :, person]) > dist:
+            #     probs[probs[self.cam.idx-1, :, person]][np.argmin(probs[self.cam.idx-1, :, person])] = 0
+            #     probs[self.cam.idx-1, label, person] = dist
+            #     print(probs)
+            
+            probs[self.cam.idx-1, label, :] = list(dists.values())
         # Should return label > person map
         # Include person > color map
 
     def create_models(self, voxels):
         # Get voxels + labels that should be used for creating a color model (those above mean height)
-        voxels, labels = remove_pants(voxels, cluster(voxels))
-        labels = np.ravel(labels)
+        c_voxels, _ = cluster(voxels)
+        voxels, labels = remove_pants(voxels, c_voxels)
         voxels = np.float32(voxels)
+        labels = np.ravel(labels)
 
         # For every person/cluster known
         for label in range(0, AMOUNT_OF_PEOPLE):
@@ -118,8 +124,8 @@ def cluster(voxels):
     # Convert to numpy array and drop height information
     np_voxels = np.float32(voxels)[:,[0,1]]
 
-    _, labels, _ = cv.kmeans(np_voxels, AMOUNT_OF_PEOPLE, None, criteria, 20, cv.KMEANS_RANDOM_CENTERS)
-    return labels
+    _, labels, centers = cv.kmeans(np_voxels, AMOUNT_OF_PEOPLE, None, criteria, 20, cv.KMEANS_RANDOM_CENTERS)
+    return labels, centers
 
 def remove_pants(voxels, labels):
     # From clustered voxels + labels, select only those voxels

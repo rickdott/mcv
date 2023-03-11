@@ -25,13 +25,9 @@ class BackgroundSubtractor:
         # Remove detected shadows
         fg[fg == 127] = 0
 
-        # Applying the morphologic closing operation (dilating, then eroding) gave results
-        # that helped denoising the edges of the foreground without losing much detail, if any
-        kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3))
-        fg = cv.morphologyEx(fg, cv.MORPH_CLOSE, kernel, iterations=1)
-
         # Find the biggest contour in the image
         contours, hierarchy = cv.findContours(fg, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+
         biggest_contours = []
         for contour in contours:
             if cv.contourArea(contour) > 1000:
@@ -39,6 +35,12 @@ class BackgroundSubtractor:
 
         # Draw filled version of biggest contour onto empty mask, resulting in final foreground
         mask = np.zeros(fg.shape, np.uint8)
+
         cv.drawContours(mask, biggest_contours, -1, 255, -1)
+
+        # Applying the morphologic closing operation (dilating, then eroding) gave results
+        # that helped denoising the edges of the foreground without losing much detail, if any
+        kernel = cv.getStructuringElement(cv.MORPH_RECT, (3, 3))
+        mask = cv.morphologyEx(mask, cv.MORPH_CLOSE, kernel, iterations=1)
 
         return mask

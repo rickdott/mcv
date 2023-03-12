@@ -29,12 +29,32 @@ class ColorModel():
         self.create_models(voxels)
 
 
-    def match_persons(self, voxels, labels, probs):
+    def match_persons(self, voxels, centers, labels, probs):
         voxels = np.float32(voxels)
         labels = np.ravel(labels)
-        
+
+        # Angles between camera position and voxel cluster center, arctan2 of center normalized by cam position, in degrees
+        angles = np.arctan2(centers[:,1] - self.cam.position[1], centers[:,0] - self.cam.position[0]) * 180 / np.pi
+        angle_diffs = angles - angles.reshape(-1, 1)
+
         # For every person/cluster
         for label in range(0, AMOUNT_OF_PEOPLE):
+            # If occluded: set dists to None
+            # If there exists a cluster center which is closer to the camera position and
+            label_dist = np.linalg.norm(self.cam.position[:2] - centers[label])
+            occluded = False
+            for label_occlusion in range(0, AMOUNT_OF_PEOPLE):
+                if label == label_occlusion: continue
+                # If the difference in angles between camera and two cluster centers is less than 5 degrees
+                # and the distance from the other label is less than this one
+                # then the cluster is occluded by the other cluster
+                if np.abs(angle_diffs[label, label_occlusion]) < 5 and np.linalg.norm(self.cam.position[:2] - centers[label_occlusion]) < label_dist:
+                    occluded = True
+                    probs[self.cam.idx-1, label, :] = None
+
+            if occluded:
+                continue
+
             p_voxels = np.int_(voxels[labels == label])
             colors = np.empty((0, 3))
 
@@ -43,13 +63,17 @@ class ColorModel():
             # Sample from voxels to determine distance to models
             sample = p_voxels[np.random.choice(p_voxels.shape[0], 100, replace=True)]
 
+            # Determine occlusion using angle + distance from camera
+            # if occluded, set distance to unused value? Maybe None?
+            new_frame = self.cam.frame.copy()
             # For each cluster (all labeled voxels)
             for v in sample:
                 # Find coordinates belonging to voxel
                 pixel = self.cam.table_r[v[0], v[1], v[2], :]
                 pixel_color = self.cam.frame[pixel[1], pixel[0]]
+                new_frame[pixel[1], pixel[0]] = [0, 0, 255]
                 colors = np.vstack((colors, pixel_color))
-            
+
             # Compare colors in cluster to all models in current camera
             for person, model in self.models.items():
                 _, new_preds = model[0].predict(colors)
@@ -70,6 +94,8 @@ class ColorModel():
             #     print(probs)
             
             probs[self.cam.idx-1, label, :] = list(dists.values())
+            # cv.imshow(f'cam{self.cam.idx} frame', new_frame)
+            # cv.waitKey(0)
         # Should return label > person map
         # Include person > color map
 

@@ -8,6 +8,12 @@ from collections import defaultdict, Counter
 # Resolution to use when generating the voxel model
 RESOLUTION = 50
 
+EXTENT_XMIN = -700
+EXTENT_XMAX = 2500
+EXTENT_YMIN = -3500
+EXTENT_YMAX = 1500
+EXTENT_ZMIN = -2000
+EXTENT_ZMAX = 0
 # The VoxelReconstructor class handles calculating the lookup tables for individual VoxelCams
 # and gathering the voxel, color combinations for the next frame.
 class VoxelReconstructor():
@@ -98,8 +104,13 @@ class VoxelReconstructor():
         # If color model is used, cluster voxels of interest (above the waist) and compare to predictions of similarly defined color models
         if self.use_color_model:
             # Labels of all voxels
-
             labels, centers = cluster(orig_voxels)
+
+            ratio_x = (abs(EXTENT_XMIN) + abs(EXTENT_XMAX)) / RESOLUTION
+            ratio_y = (abs(EXTENT_YMIN) + abs(EXTENT_YMAX)) / RESOLUTION
+
+            centers[:, 0] = EXTENT_XMIN + (centers[:, 0] * ratio_x)
+            centers[:, 1] = EXTENT_YMIN + (centers[:, 1] * ratio_y)
 
             # Voxels and labels needed for comparison
             cluster_voxels, cluster_labels = remove_pants(orig_voxels, labels)
@@ -108,21 +119,19 @@ class VoxelReconstructor():
             lp_mat = np.ones((4,4,4))
 
             for cam in self.cams:
-                self.color_models[cam.idx - 1].match_persons(cluster_voxels, cluster_labels, lp_mat)
-            
-            # Variance for each row
-            stdev = lp_mat.std(axis=2, keepdims=True)
-            # Let cam choose with highest standard deviation
-            # Maybe where lowest is furthest from mean?
-            max_var = stdev.argmax(axis=0)
-            label_person = {}
-            for label in range(0,4):
-                label_person[label] = np.argmin(lp_mat[max_var[label], label, :])
+                self.color_models[cam.idx - 1].match_persons(cluster_voxels, centers, cluster_labels, lp_mat)
+            print(lp_mat)
 
-            
+            average = np.nanmean(lp_mat, axis=0)
+            print(average)
+            print(average.argmin(axis=1))
+
+            label_person = dict(zip(range(0,4), average.argmin(axis=1)))
+
             # Create dict person > label with lowest values
             # maxes = list(np.argmin(lp_mat, axis=0))
             # print(maxes)
+
             next_colors = [list((np.array(color) + self.person_to_color[label_person[label.item()]]) / 2) for color, label in zip(next_colors, labels)]
             # next_colors = [list(self.person_to_color[person_label[label.item()]]) for label in labels]
                     

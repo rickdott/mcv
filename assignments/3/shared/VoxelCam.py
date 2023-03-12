@@ -22,6 +22,11 @@ class VoxelCam():
             self.dist = calibration['dist']
             self.rvec = calibration['rvec']
             self.tvec = calibration['tvec']
+        
+        # Calculate rotation matrix and determine position
+        rmtx = cv.Rodrigues(self.rvec)[0]
+        # Cam position x, y, z (height, negative)
+        self.position = ((-rmtx.T * np.matrix(self.tvec)).flatten()).tolist()[0]
 
     # Advance the video of this cam by one frame and return it
     def next_frame(self):
